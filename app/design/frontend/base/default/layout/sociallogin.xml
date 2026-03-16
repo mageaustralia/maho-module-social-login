@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<layout>
+    <!-- Login page: inject social buttons after the login form -->
+    <customer_account_login>
+        <reference name="content">
+            <block type="sociallogin/buttons" name="sociallogin.buttons" after="customer_form_login" template="sociallogin/buttons.phtml" />
+        </reference>
+        <reference name="head">
+            <action method="addItem"><type>skin_css</type><name>css/sociallogin.css</name></action>
+            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js</name></action>
+        </reference>
+    </customer_account_login>
+
+    <!-- Registration page: inject social buttons after the register form -->
+    <customer_account_create>
+        <reference name="content">
+            <block type="sociallogin/buttons" name="sociallogin.buttons" after="customer_form_register" template="sociallogin/buttons.phtml" />
+        </reference>
+        <reference name="head">
+            <action method="addItem"><type>skin_css</type><name>css/sociallogin.css</name></action>
+            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js</name></action>
+        </reference>
+    </customer_account_create>
+</layout>

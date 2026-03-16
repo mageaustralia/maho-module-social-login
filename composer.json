@@ -1,0 +1,21 @@
+{
+    "name": "mageaustralia/maho-module-social-login",
+    "license": "BSD-2-Clause",
+    "type": "maho-module",
+    "description": "Social login for Maho — Google, Apple, and Facebook. Works with both default Maho frontend and Maho Storefront (headless).",
+    "keywords": ["maho", "social-login", "google", "apple", "facebook", "oauth"],
+    "require": {
+        "php": ">=8.3",
+        "mahocommerce/maho": ">=24.12",
+        "firebase/php-jwt": "^6.0"
+    },
+    "authors": [
+        {
+            "name": "Mage Australia",
+            "homepage": "https://mageaustralia.com.au"
+        }
+    ],
+    "extra": {
+        "maho-module-dir": "app/code/community/MageAustralia/SocialLogin"
+    }
+}

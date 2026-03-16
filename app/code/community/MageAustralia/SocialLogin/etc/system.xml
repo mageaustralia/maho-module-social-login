@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<config>
+    <sections>
+        <customer>
+            <groups>
+                <sociallogin translate="label" module="sociallogin">
+                    <label>Social Login</label>
+                    <sort_order>50</sort_order>
+                    <frontend_type>text</frontend_type>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>1</show_in_website>
+                    <show_in_store>1</show_in_store>
+                    <fields>
+                        <google_enabled translate="label">
+                            <label>Google Sign-In Enabled</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>10</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                        </google_enabled>
+                        <google_client_id translate="label comment">
+                            <label>Google Client ID</label>
+                            <comment>OAuth 2.0 Client ID from Google Cloud Console</comment>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>20</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <google_enabled>1</google_enabled>
+                            </depends>
+                        </google_client_id>
+                        <apple_enabled translate="label">
+                            <label>Apple Sign-In Enabled</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>30</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                        </apple_enabled>
+                        <apple_service_id translate="label comment">
+                            <label>Apple Service ID</label>
+                            <comment>Service ID from Apple Developer Console (e.g. com.example.auth)</comment>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>40</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <apple_enabled>1</apple_enabled>
+                            </depends>
+                        </apple_service_id>
+                        <facebook_enabled translate="label">
+                            <label>Facebook Login Enabled</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>50</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                        </facebook_enabled>
+                        <facebook_app_id translate="label comment">
+                            <label>Facebook App ID</label>
+                            <comment>App ID from Meta for Developers (developers.facebook.com)</comment>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>60</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <facebook_enabled>1</facebook_enabled>
+                            </depends>
+                        </facebook_app_id>
+                        <facebook_app_secret translate="label comment">
+                            <label>Facebook App Secret</label>
+                            <comment>App Secret from Meta for Developers</comment>
+                            <frontend_type>obscure</frontend_type>
+                            <backend_model>adminhtml/system_config_backend_encrypted</backend_model>
+                            <sort_order>70</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <facebook_enabled>1</facebook_enabled>
+                            </depends>
+                        </facebook_app_secret>
+                    </fields>
+                </sociallogin>
+            </groups>
+        </customer>
+    </sections>
+</config>
