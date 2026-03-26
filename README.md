@@ -18,6 +18,36 @@ Customer linking logic:
 
 ## Installation
 
+### Via Composer (recommended)
+
+```bash
+composer require mageaustralia/maho-module-social-login
+php maho migrate
+```
+
+If the package isn't on Packagist, add the repository first:
+
+```json
+// composer.json
+{
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/mageaustralia/maho-module-social-login"
+        }
+    ]
+}
+```
+
+Then run:
+
+```bash
+composer require mageaustralia/maho-module-social-login:dev-main
+php maho migrate
+```
+
+### Manual Installation
+
 Copy the module files into your Maho installation:
 
 ```
