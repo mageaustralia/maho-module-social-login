@@ -6,7 +6,7 @@
     "keywords": ["maho", "social-login", "google", "apple", "facebook", "oauth"],
     "require": {
         "php": ">=8.3",
-        "mahocommerce/maho": ">=24.12",
+        "mahocommerce/maho": "^24.12",
         "firebase/php-jwt": "^6.0"
     },
     "authors": [
