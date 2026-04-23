@@ -1,5 +1,8 @@
 # MageAustralia Social Login
 
+[![CI](https://github.com/mageaustralia/maho-module-social-login/actions/workflows/ci.yml/badge.svg)](https://github.com/mageaustralia/maho-module-social-login/actions/workflows/ci.yml)
+[![License: BSD-2-Clause](https://img.shields.io/badge/license-BSD--2--Clause-blue.svg)](LICENSE)
+
 Social login for Maho — supports Google, Apple, and Facebook. Works with both the default Maho frontend and Maho Storefront (headless).
 
 ## How It Works
