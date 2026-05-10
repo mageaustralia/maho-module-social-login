@@ -51,25 +51,17 @@ class SocialAuthProcessor implements ProcessorInterface
         $isNewCustomer = false;
 
         // 2. Look up by provider + provider_id
-        $resource = \Mage::getSingleton('core/resource');
-        $read = $resource->getConnection('core_read');
-        $socialTable = $resource->getTableName('mageaustralia_social_login');
+        /** @var \MageAustralia_SocialLogin_Model_SocialIdentity $identity */
+        $identity = \Mage::getModel('sociallogin/social_identity');
+        $identity->getResource()->loadByProviderIdentity($identity, $data->provider, $providerId);
 
-        $existingLink = $read->fetchRow(
-            $read->select()
-                ->from($socialTable)
-                ->where('provider = ?', $data->provider)
-                ->where('provider_id = ?', $providerId)
-                ->limit(1),
-        );
-
-        if ($existingLink) {
-            // Existing social link — load customer
-            $customer = \Mage::getModel('customer/customer')->load((int) $existingLink['customer_id']);
+        if ($identity->getId()) {
+            // Existing social link - load customer
+            $customer = \Mage::getModel('customer/customer')->load((int) $identity->getCustomerId());
             if (!$customer->getId()) {
                 throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Linked customer no longer exists');
             }
-            \Mage::log("Social login: {$data->provider} user {$providerId} → customer #{$customer->getId()}", null, 'social_login.log');
+            \Mage::log("Social login: {$data->provider} user {$providerId} -> customer #{$customer->getId()}", null, 'social_login.log');
         } elseif ($email) {
             // 3. Look up customer by verified email
             $customer = \Mage::getModel('customer/customer');
@@ -211,24 +203,9 @@ class SocialAuthProcessor implements ProcessorInterface
 
     private function mergeGuestCart(string $maskedId, \Mage_Customer_Model_Customer $customer): array
     {
-        $resource = \Mage::getSingleton('core/resource');
-        $read = $resource->getConnection('core_read');
-        $quoteTable = $resource->getTableName('sales/quote');
-
-        $guestQuoteId = $read->fetchOne(
-            $read->select()
-                ->from($quoteTable, ['entity_id'])
-                ->where('masked_quote_id = ?', $maskedId)
-                ->where('is_active = ?', 1),
-        );
-
-        if (!$guestQuoteId) {
-            return ['maskedId' => null, 'qty' => 0];
-        }
-
         /** @var \Mage_Sales_Model_Quote $guestCart */
-        $guestCart = \Mage::getModel('sales/quote')->loadByIdWithoutStore((int) $guestQuoteId);
-        if (!$guestCart->getId() || !$guestCart->getItemsCount()) {
+        $guestCart = \Mage::getModel('sales/quote')->load($maskedId, 'masked_quote_id');
+        if (!$guestCart->getId() || !$guestCart->getIsActive() || !$guestCart->getItemsCount()) {
             return ['maskedId' => null, 'qty' => 0];
         }
 
