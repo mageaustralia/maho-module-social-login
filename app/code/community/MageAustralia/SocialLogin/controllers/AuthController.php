@@ -21,6 +21,7 @@ class MageAustralia_SocialLogin_AuthController extends Mage_Core_Controller_Fron
      * POST /sociallogin/auth/callback
      * Validates the JWT from the social auth API and creates a Maho customer session.
      */
+    #[\Maho\Config\Route('/sociallogin/auth/callback', name: 'sociallogin.auth.callback')]
     public function callbackAction(): void
     {
         if (!$this->getRequest()->isPost()) {

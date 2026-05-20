@@ -53,15 +53,6 @@
         </blocks>
     </global>
     <frontend>
-        <routers>
-            <sociallogin>
-                <use>standard</use>
-                <args>
-                    <module>MageAustralia_SocialLogin</module>
-                    <frontName>sociallogin</frontName>
-                </args>
-            </sociallogin>
-        </routers>
         <layout>
             <updates>
                 <sociallogin>
