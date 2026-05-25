@@ -21,10 +21,11 @@ class MageAustralia_SocialLogin_Block_Buttons extends Mage_Core_Block_Template
     }
 
     /**
-     * Get the social auth API endpoint URL.
+     * Frontend controller endpoint that verifies the credential and creates a
+     * normal Maho customer session (storefront-independent — no headless API).
      */
-    public function getApiUrl(): string
+    public function getLoginUrl(): string
     {
-        return rtrim(Mage::getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB), '/') . '/api/customers/social-auth';
+        return Mage::getUrl('sociallogin/auth/login');
     }
 }

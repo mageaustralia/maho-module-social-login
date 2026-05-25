@@ -8,107 +8,48 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use MageAustralia\SocialLogin\Api\Resource\SocialAuth;
 use Maho\ApiPlatform\Service\JwtService;
-use Maho\ApiPlatform\Service\RateLimiter;
 
+/**
+ * Headless (storefront) social-auth: verifies the provider credential via the
+ * shared helper, then mints a Maho JWT and merges the guest cart. Normal Maho
+ * frontend logins go through MageAustralia_SocialLogin_AuthController instead.
+ */
 class SocialAuthProcessor implements ProcessorInterface
 {
-    private const SUPPORTED_PROVIDERS = ['google', 'apple', 'facebook'];
-
     /**
      * @param SocialAuth $data
      */
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): SocialAuth
     {
-        // Rate limiting — 10 attempts per IP per minute
-        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        $rateLimiter = new RateLimiter();
-        $rateLimiter->check("social_auth:ip:{$ip}", 10, 60);
-
-        if (empty($data->provider) || !in_array($data->provider, self::SUPPORTED_PROVIDERS, true)) {
-            throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException(
-                'Invalid provider. Supported: ' . implode(', ', self::SUPPORTED_PROVIDERS)
-            );
-        }
-
-        if (empty($data->token)) {
-            throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException('Token is required');
-        }
-
-        // 1. Verify the token with the provider
-        $provider = $this->getProvider($data->provider);
         try {
-            $claims = $provider->verifyToken($data->token);
-        } catch (\InvalidArgumentException $e) {
-            \Mage::log("Social auth token rejected ({$data->provider}): {$e->getMessage()}", null, 'social_login.log');
-            throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException('Invalid authentication token');
-        } catch (\RuntimeException $e) {
-            \Mage::log("Social auth provider error ({$data->provider}): {$e->getMessage()}", null, 'social_login.log');
-            throw new \Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException(null, 'Provider verification temporarily unavailable');
-        }
-
-        $providerId = $claims['sub'];
-        $email = $claims['email'] ?? null;
-        $isNewCustomer = false;
-
-        // 2. Look up by provider + provider_id
-        /** @var \MageAustralia_SocialLogin_Model_SocialIdentity $identity */
-        $identity = \Mage::getModel('sociallogin/social_identity');
-        $identity->getResource()->loadByProviderIdentity($identity, $data->provider, $providerId);
-
-        if ($identity->getId()) {
-            // Existing social link - load customer
-            $customer = \Mage::getModel('customer/customer')->load((int) $identity->getCustomerId());
-            if (!$customer->getId()) {
-                throw new \Symfony\Component\HttpKernel\Exception\NotFoundHttpException('Linked customer no longer exists');
-            }
-            \Mage::log("Social login: {$data->provider} user {$providerId} -> customer #{$customer->getId()}", null, 'social_login.log');
-        } elseif ($email) {
-            // 3. Look up customer by verified email
-            $customer = \Mage::getModel('customer/customer');
-            $customer->setWebsiteId(\Mage::app()->getStore()->getWebsiteId());
-            $customer->loadByEmail($email);
-
-            if ($customer->getId()) {
-                // Existing customer with same email — require verification before linking.
-                // Two options: password verification (instant) or email confirmation link.
-                if (!empty($data->password)) {
-                    // Option A: Verify password inline
-                    if (!$customer->validatePassword($data->password)) {
-                        // Rate limit password attempts per email
-                        $rateLimiter->check('social_link:email:' . strtolower($email), 5, 300);
-                        throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException('Incorrect password');
-                    }
-                    $this->createSocialLink((int) $customer->getId(), $data->provider, $providerId, $email);
-                    \Mage::log("Social link created (password verified): {$data->provider} → customer #{$customer->getId()} ({$email})", null, 'social_login.log');
-                } else {
-                    // No password provided — tell the client to prompt for one
-                    $data->id = 'link-required';
-                    $data->linkRequired = 'account_exists';
-                    $data->customer = [
-                        'email' => $this->maskEmail($email),
-                    ];
-                    $data->token = null;
-                    return $data;
-                }
-            } else {
-                // 4. Create new customer
-                $customer = $this->createCustomer($claims);
-                $this->createSocialLink((int) $customer->getId(), $data->provider, $providerId, $email);
-                $isNewCustomer = true;
-                \Mage::log("Social login new customer: {$data->provider} → customer #{$customer->getId()} ({$email})", null, 'social_login.log');
-            }
-        } else {
-            // No email from provider and no existing link
-            throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException(
-                'Unable to sign in. Please try another method or create an account.'
+            $result = \Mage::helper('sociallogin')->authenticate(
+                (string) ($data->provider ?? ''),
+                (string) ($data->token ?? ''),
+                (isset($data->password) && $data->password !== '') ? (string) $data->password : null,
             );
+        } catch (\Mage_Core_Exception $e) {
+            throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException($e->getMessage());
         }
 
-        // Generate Maho JWT
-        $jwtService = new JwtService();
-        $token = $jwtService->generateCustomerToken($customer);
+        // Existing account with this email — client must supply a password to link.
+        if (!empty($result['linkRequired'])) {
+            $data->id = 'link-required';
+            $data->linkRequired = 'account_exists';
+            $data->customer = ['email' => $result['email']];
+            $data->token = null;
+            $data->password = null;
+            return $data;
+        }
 
-        // Cart merge logic (mirrors AuthController)
+        /** @var \Mage_Customer_Model_Customer $customer */
+        $customer = $result['customer'];
+        $isNewCustomer = !empty($result['isNew']);
+
+        // Maho JWT for the storefront session
+        $jwtService = new JwtService();
+        $jwt = $jwtService->generateCustomerToken($customer);
+
+        // Merge a storefront guest cart into the customer's cart if supplied
         $cartId = null;
         $cartQty = 0;
         if (!empty($data->maskedId) && preg_match('/^[a-f0-9]{32}$/i', $data->maskedId)) {
@@ -116,7 +57,6 @@ class SocialAuthProcessor implements ProcessorInterface
             $cartId = $merged['maskedId'];
             $cartQty = $merged['qty'];
         }
-
         if (!$cartId) {
             $existingCart = $this->getCustomerCart($customer);
             if ($existingCart) {
@@ -125,9 +65,8 @@ class SocialAuthProcessor implements ProcessorInterface
             }
         }
 
-        // Build response
         $data->id = 'social-auth-' . $customer->getId();
-        $data->authToken = $token;
+        $data->authToken = $jwt;
         $data->customer = [
             'id'        => (int) $customer->getId(),
             'email'     => $customer->getEmail(),
@@ -138,67 +77,12 @@ class SocialAuthProcessor implements ProcessorInterface
         $data->cartItemsQty = $cartQty;
         $data->isNewCustomer = $isNewCustomer;
 
-        // Clear sensitive input fields from response
+        // Clear sensitive input fields from the response
         $data->token = null;
         $data->maskedId = null;
         $data->password = null;
 
         return $data;
-    }
-
-    private function getProvider(string $code): object
-    {
-        $className = 'MageAustralia_SocialLogin_Model_Provider_' . ucfirst($code);
-        if (!class_exists($className)) {
-            \Mage::getConfig()->getModelClassName("sociallogin/provider_{$code}");
-            if (!class_exists($className)) {
-                throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException("Unknown provider: {$code}");
-            }
-        }
-        return new $className();
-    }
-
-    private function createSocialLink(int $customerId, string $provider, string $providerId, ?string $email): void
-    {
-        $resource = \Mage::getSingleton('core/resource');
-        $write = $resource->getConnection('core_write');
-        $write->insert(
-            $resource->getTableName('mageaustralia_social_login'),
-            [
-                'customer_id'    => $customerId,
-                'provider'       => $provider,
-                'provider_id'    => $providerId,
-                'provider_email' => $email,
-            ],
-        );
-    }
-
-    private function createCustomer(array $claims): \Mage_Customer_Model_Customer
-    {
-        /** @var \Mage_Customer_Model_Customer $customer */
-        $customer = \Mage::getModel('customer/customer');
-        $customer->setWebsiteId(\Mage::app()->getStore()->getWebsiteId());
-        $customer->setStore(\Mage::app()->getStore());
-
-        $customer->setEmail($claims['email']);
-        $customer->setFirstname($claims['given_name'] ?? $claims['name'] ?? 'Customer');
-        $customer->setLastname($claims['family_name'] ?? '.');
-        $customer->setPassword(\Mage::helper('core')->getRandomString(32));
-        $customer->setIsActive(1);
-        $customer->setConfirmation(null);
-
-        $customer->save();
-        return $customer;
-    }
-
-    /**
-     * Mask email for display: m****@example.com
-     */
-    private function maskEmail(string $email): string
-    {
-        [$local, $domain] = explode('@', $email, 2);
-        $masked = substr($local, 0, 1) . str_repeat('*', max(3, strlen($local) - 1));
-        return $masked . '@' . $domain;
     }
 
     private function mergeGuestCart(string $maskedId, \Mage_Customer_Model_Customer $customer): array
@@ -241,7 +125,6 @@ class SocialAuthProcessor implements ProcessorInterface
         }
 
         $customerCart->collectTotals()->save();
-
         $guestCart->setIsActive(false)->save();
 
         return [

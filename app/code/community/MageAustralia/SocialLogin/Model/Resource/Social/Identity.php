@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-class MageAustralia_SocialLogin_Model_Resource_SocialIdentity extends Mage_Core_Model_Resource_Db_Abstract
+class MageAustralia_SocialLogin_Model_Resource_Social_Identity extends Mage_Core_Model_Resource_Db_Abstract
 {
     protected function _construct(): void
     {
@@ -13,7 +13,7 @@ class MageAustralia_SocialLogin_Model_Resource_SocialIdentity extends Mage_Core_
      * Load by provider + provider_id (unique key).
      */
     public function loadByProviderIdentity(
-        MageAustralia_SocialLogin_Model_SocialIdentity $object,
+        MageAustralia_SocialLogin_Model_Social_Identity $object,
         string $provider,
         string $providerId,
     ): self {

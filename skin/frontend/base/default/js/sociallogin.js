@@ -4,17 +4,75 @@
  * Falls back gracefully if GIS can't render (e.g. origin not authorized).
  */
 var MahoSocialLogin = (function() {
-    var container, apiUrl;
+    var container, loginUrl;
     var pendingProvider = null, pendingToken = null;
 
     function init() {
         container = document.getElementById('social-login-buttons');
         if (!container) return;
-        apiUrl = container.dataset.apiUrl;
+        loginUrl = container.dataset.loginUrl;
 
         if (container.dataset.googleClientId) loadGoogleSdk();
         if (container.dataset.appleServiceId) loadAppleSdk();
         if (container.dataset.facebookAppId) loadFacebookSdk();
+
+        initForgotPassword();
+
+        // The link-prompt lives inside the surrounding login <form>, so pressing
+        // Enter in the password would submit that form (and trip its validation).
+        // Route Enter to the link action instead.
+        var linkPwd = container.querySelector('#social-link-password');
+        if (linkPwd) {
+            linkPwd.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    e.preventDefault();
+                    linkAccount(e);
+                }
+            });
+        }
+
+        guardDropdownDuringGsi();
+    }
+
+    // When the buttons live inside a closable header dropdown, a Google sign-in
+    // opens a popup; clicking back on the page then closes the dropdown, hides
+    // the GSI iframe and orphans the sign-in. Keep the dropdown open while the
+    // popup is in flight. Theme supplies the ancestor selector via data-attr.
+    function guardDropdownDuringGsi() {
+        var sel = container.getAttribute('data-keep-open-selector');
+        if (!sel) return;
+        var dropdown = container.closest(sel);
+        if (!dropdown) return; // e.g. the full login page — no dropdown to guard
+        var openClass = container.getAttribute('data-keep-open-class') || 'active';
+        var guarding = false;
+
+        window.addEventListener('blur', function() {
+            if (!dropdown.classList.contains(openClass)) return;
+            guarding = true;
+            var onFocus = function() {
+                setTimeout(function() { guarding = false; }, 1000);
+                window.removeEventListener('focus', onFocus);
+            };
+            window.addEventListener('focus', onFocus);
+        });
+
+        new MutationObserver(function() {
+            if (guarding && !dropdown.classList.contains(openClass)) {
+                dropdown.classList.add(openClass);
+            }
+        }).observe(dropdown, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // ---- Forgot-password: reuse the theme's native <dialog> (base/default mechanism) ----
+
+    function initForgotPassword() {
+        var link = container.querySelector('#social-login-link-prompt a[href*="forgotpassword"]');
+        var dialog = document.getElementById('forgot-password-dialog');
+        if (!link || !dialog) return; // no theme dialog on this page -> let the link navigate
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            dialog.showModal();
+        });
     }
 
     // ---- SDK Loaders ----
@@ -34,8 +92,63 @@ var MahoSocialLogin = (function() {
                 },
                 auto_select: false
             });
+
+            // Render the native GSI button. When it lives in a hidden container
+            // (e.g. the header account dropdown) GSI bakes in a 0 width, so
+            // re-render once the container first becomes visible.
+            renderGoogleButton();
+            var gTarget = document.getElementById('social-login-google-button');
+            if (gTarget && gTarget.offsetWidth === 0 && 'ResizeObserver' in window) {
+                var ro = new ResizeObserver(function(entries) {
+                    for (var i = 0; i < entries.length; i++) {
+                        if (entries[i].contentRect.width > 0) {
+                            renderGoogleButton();
+                            ro.disconnect();
+                            return;
+                        }
+                    }
+                });
+                ro.observe(gTarget);
+            }
+
+            // One Tap auto-prompt — gated: shows on every page until the user
+            // dismisses it, then stays hidden until they reach cart/checkout.
+            maybePromptOneTap();
         };
         document.head.appendChild(script);
+    }
+
+    // Minimal config (no `text`) so GSI shows the personalised "Sign in as <name>"
+    // button when the visitor has a Google session. Clears first so re-renders
+    // (after the container becomes visible) don't stack two buttons.
+    function renderGoogleButton() {
+        var target = document.getElementById('social-login-google-button');
+        if (!target || !window.google || !google.accounts || !google.accounts.id) return;
+        var width = Math.max(200, Math.min(target.offsetWidth || 360, 400));
+        target.innerHTML = '';
+        google.accounts.id.renderButton(target, { theme: 'outline', size: 'large', width: width });
+    }
+
+    function maybePromptOneTap() {
+        if (!window.google || !google.accounts || !google.accounts.id) return;
+        var path = window.location.pathname || '';
+        var onCheckout = /\/checkout(\/|$)/.test(path) || /\/onestepcheckout/.test(path);
+        var dismissed = false;
+        try { dismissed = localStorage.getItem('mahoOneTapDismissed') === '1'; } catch (e) {}
+        if (onCheckout) {
+            // Re-enable the prompt once the visitor is in the buying flow.
+            try { localStorage.removeItem('mahoOneTapDismissed'); } catch (e) {}
+            dismissed = false;
+        }
+        if (dismissed) return;
+        google.accounts.id.prompt(function(notification) {
+            if (notification.isDismissedMoment && notification.isDismissedMoment()) {
+                var reason = notification.getDismissedReason ? notification.getDismissedReason() : '';
+                if (reason === 'user_cancel' || reason === 'cancel_called' || reason === 'tap_outside' || reason === 'flow_restarted') {
+                    try { localStorage.setItem('mahoOneTapDismissed', '1'); } catch (e) {}
+                }
+            }
+        });
     }
 
     function loadAppleSdk() {
@@ -190,15 +303,19 @@ var MahoSocialLogin = (function() {
     // ---- API Call ----
 
     function authenticate(provider, token, password) {
-        var body = { provider: provider, token: token };
-        if (password) body.password = password;
-
         setButtonsDisabled(true);
 
+        var body = new URLSearchParams();
+        body.set('provider', provider);
+        body.set('token', token);
+        if (password) body.set('password', password);
+        var fk = document.querySelector('input[name="form_key"]');
+        if (fk) body.set('form_key', fk.value);
+
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', apiUrl);
-        xhr.setRequestHeader('Content-Type', 'application/ld+json');
-        xhr.setRequestHeader('Accept', 'application/ld+json');
+        xhr.open('POST', loginUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+        xhr.setRequestHeader('Accept', 'application/json');
         xhr.onload = function() {
             setButtonsDisabled(false);
             var data;
@@ -207,60 +324,36 @@ var MahoSocialLogin = (function() {
                 return;
             }
 
-            if (xhr.status !== 200 && xhr.status !== 201) {
-                var msg = data['hydra:description'] || data.detail || data.message || 'Authentication failed.';
-                showError(msg);
-                return;
-            }
-
             if (data.linkRequired === 'account_exists') {
                 pendingProvider = provider;
                 pendingToken = token;
-                showLinkPrompt(data.customer ? data.customer.email : 'your email');
+                showLinkPrompt(data.email || 'your email');
                 return;
             }
 
-            // Create a Maho session by posting the JWT to our controller
-            createSession(data.authToken);
+            if (xhr.status >= 200 && xhr.status < 300 && data.success) {
+                window.location.href = data.redirect || '/customer/account';
+                return;
+            }
+
+            showError(data.error || 'Sign-in failed. Please try again.');
         };
         xhr.onerror = function() {
             setButtonsDisabled(false);
             showError('Network error. Please try again.');
         };
-        xhr.send(JSON.stringify(body));
-    }
-
-    function createSession(jwt) {
-        // Submit the JWT to a Maho controller that creates a session cookie
-        var form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/sociallogin/auth/callback';
-        form.style.display = 'none';
-
-        var tokenInput = document.createElement('input');
-        tokenInput.type = 'hidden';
-        tokenInput.name = 'token';
-        tokenInput.value = jwt;
-        form.appendChild(tokenInput);
-
-        // Include form key for CSRF protection
-        var formKeyEl = document.querySelector('input[name="form_key"]');
-        if (formKeyEl) {
-            var fk = document.createElement('input');
-            fk.type = 'hidden';
-            fk.name = 'form_key';
-            fk.value = formKeyEl.value;
-            form.appendChild(fk);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
+        xhr.send(body.toString());
     }
 
     function linkAccount(event) {
-        event.preventDefault();
+        if (event) event.preventDefault();
+        if (!pendingProvider || !pendingToken) return;
         var password = document.getElementById('social-link-password');
-        if (!password || !password.value || !pendingProvider || !pendingToken) return;
+        if (!password || !password.value) {
+            showError('Please enter your password to link your account.');
+            if (password) password.focus();
+            return;
+        }
         hideError();
         authenticate(pendingProvider, pendingToken, password.value);
     }
@@ -268,6 +361,7 @@ var MahoSocialLogin = (function() {
     // ---- UI Helpers ----
 
     function showLinkPrompt(email) {
+        hideError();
         var actions = container.querySelector('.social-login-actions');
         var divider = container.querySelector('.social-login-divider');
         var prompt = document.getElementById('social-login-link-prompt');

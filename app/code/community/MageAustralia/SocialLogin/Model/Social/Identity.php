@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-class MageAustralia_SocialLogin_Model_SocialIdentity extends Mage_Core_Model_Abstract
+class MageAustralia_SocialLogin_Model_Social_Identity extends Mage_Core_Model_Abstract
 {
     protected function _construct(): void
     {

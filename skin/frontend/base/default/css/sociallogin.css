@@ -29,6 +29,12 @@
     gap: 10px;
 }
 
+/* Native Google Identity Services button container */
+.social-login-google-button {
+    display: flex;
+    justify-content: center;
+}
+
 .social-login-btn {
     display: flex;
     align-items: center;

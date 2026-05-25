@@ -6,8 +6,8 @@
             <block type="sociallogin/buttons" name="sociallogin.buttons" after="customer_form_login" template="sociallogin/buttons.phtml" />
         </reference>
         <reference name="head">
-            <action method="addItem"><type>skin_css</type><name>css/sociallogin.css</name></action>
-            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js</name></action>
+            <action method="addItem"><type>skin_css</type><name>css/sociallogin.css?v=11</name></action>
+            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=11</name></action>
         </reference>
     </customer_account_login>
 
@@ -17,8 +17,8 @@
             <block type="sociallogin/buttons" name="sociallogin.buttons" after="customer_form_register" template="sociallogin/buttons.phtml" />
         </reference>
         <reference name="head">
-            <action method="addItem"><type>skin_css</type><name>css/sociallogin.css</name></action>
-            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js</name></action>
+            <action method="addItem"><type>skin_css</type><name>css/sociallogin.css?v=11</name></action>
+            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=11</name></action>
         </reference>
     </customer_account_create>
 </layout>
