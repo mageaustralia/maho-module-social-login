@@ -121,7 +121,6 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
 
         // 2. Existing customer with this email → require password to link
         $customer = Mage::getModel('customer/customer');
-        // @phpstan-ignore-next-line method.notFound (getStore exists at runtime; absent in PHPStan stub)
         $customer->setWebsiteId(Mage::app()->getStore()->getWebsiteId());
         $customer->loadByEmail($email);
         if ($customer->getId()) {
@@ -166,7 +165,6 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
     {
         /** @var Mage_Customer_Model_Customer $customer */
         $customer = Mage::getModel('customer/customer');
-        // @phpstan-ignore-next-line method.notFound (getStore exists at runtime; absent in PHPStan stub)
         $store = Mage::app()->getStore();
         $customer->setWebsiteId($store->getWebsiteId());
         $customer->setStore($store);
