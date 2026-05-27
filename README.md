@@ -231,4 +231,4 @@ Google and Apple tokens are verified locally using `firebase/php-jwt` (already i
 
 ## License
 
-BSD-2-Clause — same as other MageAustralia modules.
+OSL-3.0 — matches the Maho core base.

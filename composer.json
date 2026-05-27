@@ -1,6 +1,6 @@
 {
     "name": "mageaustralia/maho-module-social-login",
-    "license": "BSD-2-Clause",
+    "license": "OSL-3.0",
     "type": "maho-module",
     "description": "Social login for Maho — Google, Apple, and Facebook. Works with both default Maho frontend and Maho Storefront (headless).",
     "keywords": ["maho", "social-login", "google", "apple", "facebook", "oauth"],
