@@ -311,6 +311,12 @@ var MahoSocialLogin = (function() {
         if (password) body.set('password', password);
         var fk = document.querySelector('input[name="form_key"]');
         if (fk) body.set('form_key', fk.value);
+        // On checkout, return the customer to checkout after sign-in / linking
+        // instead of the account dashboard. Other pages keep the default.
+        var path = window.location.pathname || '';
+        if (/\/(firecheckout|checkout|onestepcheckout)(\/|$)/.test(path)) {
+            body.set('redirect', path + (window.location.search || ''));
+        }
 
         var xhr = new XMLHttpRequest();
         xhr.open('POST', loginUrl);

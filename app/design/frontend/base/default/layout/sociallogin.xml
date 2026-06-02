@@ -7,7 +7,7 @@
         </reference>
         <reference name="head">
             <action method="addItem"><type>skin_css</type><name>css/sociallogin.css?v=11</name></action>
-            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=11</name></action>
+            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=12</name></action>
         </reference>
     </customer_account_login>
 
@@ -18,7 +18,7 @@
         </reference>
         <reference name="head">
             <action method="addItem"><type>skin_css</type><name>css/sociallogin.css?v=11</name></action>
-            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=11</name></action>
+            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=12</name></action>
         </reference>
     </customer_account_create>
 </layout>

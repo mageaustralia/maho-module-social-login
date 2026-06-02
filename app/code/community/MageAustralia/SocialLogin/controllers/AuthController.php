@@ -70,7 +70,7 @@ class MageAustralia_SocialLogin_AuthController extends Mage_Core_Controller_Fron
 
             $this->getResponse()->setBody(Mage::helper('core')->jsonEncode([
                 'success'  => true,
-                'redirect' => Mage::getUrl('customer/account'),
+                'redirect' => $this->_resolveRedirect(),
             ]));
         } catch (Mage_Core_Exception $e) {
             $this->_jsonError($e->getMessage(), 400);
@@ -78,6 +78,26 @@ class MageAustralia_SocialLogin_AuthController extends Mage_Core_Controller_Fron
             Mage::logException($e);
             $this->_jsonError('Sign-in failed. Please try again.', 500);
         }
+    }
+
+    /**
+     * Where to send the customer after a successful sign-in / account link.
+     * The XHR client may post a `redirect` target (e.g. so a checkout sign-in
+     * returns to checkout instead of the account dashboard). Only same-site
+     * relative paths are honoured, to prevent an open redirect.
+     */
+    private function _resolveRedirect(): string
+    {
+        $redirect = (string) $this->getRequest()->getPost('redirect');
+        if ($redirect !== ''
+            && $redirect[0] === '/'
+            && substr($redirect, 0, 2) !== '//'
+            && strpos($redirect, '\\') === false
+            && strpos($redirect, '://') === false
+        ) {
+            return $redirect;
+        }
+        return Mage::getUrl('customer/account');
     }
 
     private function _jsonError(string $message, int $code): void
