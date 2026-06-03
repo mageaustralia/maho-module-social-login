@@ -95,3 +95,14 @@
     align-items: center;
     gap: 12px;
 }
+
+/* Account-linking prompt: make the password field span its container so it
+   matches the full-width checkout/billing inputs instead of the narrow
+   default .input-text box. */
+#social-login-link-prompt .input-box {
+    display: block;
+}
+#social-login-link-prompt .input-text {
+    width: 100%;
+    box-sizing: border-box;
+}
