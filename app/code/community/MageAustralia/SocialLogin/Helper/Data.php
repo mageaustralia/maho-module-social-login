@@ -197,6 +197,9 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
     public function getClickatellSender(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_clickatell_sender', $storeId); }
     public function getOtpPepper(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_pepper', $storeId); }
 
+    public function getSmsProvider(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_sms_provider', $storeId) ?: 'clickatell'; }
+    public function getOtpResendCooldown(?int $storeId = null): int { return max(0, (int) Mage::getStoreConfig('customer/sociallogin/otp_resend_cooldown', $storeId)); }
+
     public function normaliseEmail(string $email): string { return strtolower(trim($email)); }
 
     public function normaliseMobile(string $mobile): string

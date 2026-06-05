@@ -83,6 +83,8 @@
                 <otp_rl_ip_count>15</otp_rl_ip_count>
                 <otp_rl_ip_window>3600</otp_rl_ip_window>
                 <otp_sms_enabled>0</otp_sms_enabled>
+                <otp_sms_provider>clickatell</otp_sms_provider>
+                <otp_resend_cooldown>60</otp_resend_cooldown>
                 <otp_clickatell_api_key backend_model="adminhtml/system_config_backend_encrypted"/>
                 <otp_clickatell_sender/>
                 <otp_pepper backend_model="adminhtml/system_config_backend_encrypted"/>
