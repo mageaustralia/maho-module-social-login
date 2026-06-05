@@ -29,41 +29,26 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
             return;
         }
 
-        $req = $this->getRequest();
-        $purpose = (string) $req->getPost('purpose', 'login');
-        $channel = (string) $req->getPost('channel', 'email');
-
-        $rawIdentifier = (string) $req->getPost('identifier', '');
-        if ($rawIdentifier === '') {
-            $rawIdentifier = (string) $req->getPost('email', '');
-        }
-        if ($rawIdentifier === '') {
-            $rawIdentifier = (string) $req->getPost('mobile', '');
-        }
-
         $helper = Mage::helper('sociallogin');
-        $identifier = $channel === 'sms'
-            ? $helper->normaliseMobile($rawIdentifier)
-            : $helper->normaliseEmail($rawIdentifier);
-
-        if ($purpose === 'add_mobile' && !Mage::getSingleton('customer/session')->isLoggedIn()) {
-            $this->_json(['error' => 'Please sign in.'], 403);
-            return;
+        $purpose = (string) $this->getRequest()->getPost('purpose', 'login');
+        if ($purpose === 'add_mobile') {
+            if (!Mage::getSingleton('customer/session')->isLoggedIn()) {
+                $this->_json(['error' => 'Please sign in.'], 403);
+                return;
+            }
+            $identifier = $helper->normaliseMobile((string) $this->getRequest()->getPost('mobile'));
+        } else {
+            $purpose = 'login';
+            $identifier = $helper->normaliseEmail((string) $this->getRequest()->getPost('email'));
         }
 
-        Mage::helper('sociallogin/otp')->requestCode(
-            $identifier,
-            $purpose,
-            $channel,
-            $this->_storeId(),
-            $this->_ip(),
-        );
+        Mage::helper('sociallogin/otp')->requestCode($identifier, $purpose, 'sms', $this->_storeId(), $this->_ip());
 
         // Enumeration-safe: identical body whatever the outcome (sent, not-sent,
         // throttled, cooldown). Do not leak account existence or throttling state.
         $this->_json([
             'ok'      => true,
-            'message' => 'If your details match an account, a verification code has been sent.',
+            'message' => 'If your details match an account with a verified mobile, a code has been sent by SMS.',
         ]);
     }
 

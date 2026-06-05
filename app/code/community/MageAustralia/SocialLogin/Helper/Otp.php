@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
 {
-    public const PURPOSES = ['login', 'register', 'link', 'add_mobile'];
+    public const PURPOSES = ['login', 'add_mobile'];
 
     /**
      * Request a code for an identifier+purpose. Always enumeration-safe: returns the
@@ -36,22 +36,18 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
 
         $this->_consumeOpenCodes($identifier, $purpose);
         Mage::getModel('sociallogin/otp')
-            ->setIdentifier($identifier)->setPurpose($purpose)->setChannel($channel)
+            ->setIdentifier($identifier)->setPurpose($purpose)->setChannel('sms')
             ->setCodeHash($this->_hash($code, $storeId))->setAttempts(0)
             ->setExpiresAt($expires)->setConsumedAt(null)->setRequestIp($ip)->setCreatedAt($now)
             ->save();
 
-        // Only actually deliver if the action makes sense (e.g. for login, the account
-        // must exist). Whether it exists is NOT revealed in the return value.
-        $send = $this->_shouldSend($identifier, $purpose, $storeId);
-        if ($send) {
-            $delivered = $this->_channel($channel)->send($identifier, $code, $purpose, $storeId);
-            if (!$delivered && $channel === 'sms') {
-                // fall back to email for login if SMS fails and identifier is an email
-                if (strpos($identifier, '@') !== false) {
-                    $this->_channel('email')->send($identifier, $code, $purpose, $storeId);
-                }
-            }
+        // Resolve where the code is SMS-delivered. For login this is the verified mobile
+        // of the account that owns the email; for add_mobile it is the identifier itself.
+        // When no destination resolves (no account / no verified mobile) we send nothing -
+        // whether it exists is NOT revealed in the return value (enumeration-safe).
+        $mobile = $this->_deliveryMobile($identifier, $purpose, $storeId);
+        if ($mobile !== null && $mobile !== '') {
+            (new MageAustralia_SocialLogin_Model_Otp_Channel_Sms())->send($mobile, $code, $purpose, $storeId);
         }
         return ['ok' => true, 'throttled' => false, 'channel' => $channel];
     }
@@ -126,16 +122,26 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
         );
     }
 
-    protected function _shouldSend(string $identifier, string $purpose, ?int $storeId = null): bool
+    /**
+     * Resolve the mobile number a code is SMS-delivered to.
+     * - add_mobile: the identifier IS the mobile being verified.
+     * - login: the verified mobile of the customer that owns this email, or null
+     *   if no such customer or no verified mobile (delivery is then skipped).
+     */
+    protected function _deliveryMobile(string $identifier, string $purpose, ?int $storeId): ?string
     {
-        if ($purpose === 'register' || $purpose === 'add_mobile') {
-            return true;
+        if ($purpose === 'add_mobile') {
+            return $identifier;
         }
         $websiteId = $storeId !== null
             ? (int) Mage::app()->getStore($storeId)->getWebsiteId()
             : (int) Mage::app()->getStore()->getWebsiteId();
         $customer = Mage::getModel('customer/customer')->setWebsiteId($websiteId)->loadByEmail($identifier);
-        return (bool) $customer->getId();
+        if (!$customer->getId() || !$customer->getMobileVerified()) {
+            return null;
+        }
+        $mobile = (string) $customer->getMobile();
+        return $mobile !== '' ? $mobile : null;
     }
 
     /**
@@ -188,12 +194,5 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
     protected function _hash(string $code, ?int $storeId): string
     {
         return hash('sha256', $code . '|' . Mage::helper('sociallogin')->getOtpPepper($storeId));
-    }
-
-    protected function _channel(string $channel): MageAustralia_SocialLogin_Model_Otp_ChannelInterface
-    {
-        return $channel === 'sms'
-            ? new MageAustralia_SocialLogin_Model_Otp_Channel_Sms()
-            : new MageAustralia_SocialLogin_Model_Otp_Channel_Email();
     }
 }
