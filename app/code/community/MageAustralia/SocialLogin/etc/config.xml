@@ -2,7 +2,7 @@
 <config>
     <modules>
         <MageAustralia_SocialLogin>
-            <version>1.0.0</version>
+            <version>1.1.0</version>
         </MageAustralia_SocialLogin>
     </modules>
     <global>
@@ -17,6 +17,9 @@
                     <social_identity>
                         <table>mageaustralia_social_login</table>
                     </social_identity>
+                    <otp>
+                        <table>sociallogin_otp</table>
+                    </otp>
                 </entities>
             </sociallogin_resource>
         </models>
