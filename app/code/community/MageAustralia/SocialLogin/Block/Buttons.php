@@ -28,4 +28,28 @@ class MageAustralia_SocialLogin_Block_Buttons extends Mage_Core_Block_Template
     {
         return Mage::getUrl('sociallogin/auth/login');
     }
+
+    /**
+     * Whether OTP (email-code) account linking is enabled.
+     */
+    public function isOtpEnabled(): bool
+    {
+        return Mage::helper('sociallogin')->isOtpEnabled();
+    }
+
+    /**
+     * Endpoint that requests an OTP to link a social account (alternative to password).
+     */
+    public function getOtpLinkRequestUrl(): string
+    {
+        return Mage::getUrl('sociallogin/otp/link/request');
+    }
+
+    /**
+     * Endpoint that verifies the link OTP and completes the social link.
+     */
+    public function getOtpLinkVerifyUrl(): string
+    {
+        return Mage::getUrl('sociallogin/otp/link/verify');
+    }
 }

@@ -8,7 +8,7 @@
         </reference>
         <reference name="head">
             <action method="addItem"><type>skin_css</type><name>css/sociallogin.css?v=12</name></action>
-            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=12</name></action>
+            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=13</name></action>
             <action method="addItem"><type>skin_css</type><name>css/sociallogin-otp.css?v=1</name></action>
             <action method="addItem"><type>skin_js</type><name>js/sociallogin-otp.js?v=1</name></action>
         </reference>
@@ -21,7 +21,7 @@
         </reference>
         <reference name="head">
             <action method="addItem"><type>skin_css</type><name>css/sociallogin.css?v=12</name></action>
-            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=12</name></action>
+            <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=13</name></action>
         </reference>
     </customer_account_create>
 </layout>

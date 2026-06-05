@@ -202,6 +202,79 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
     }
 
     /**
+     * POST /sociallogin/otp/link/request
+     * Request an OTP to link a social account to the existing customer that owns the
+     * verified provider email. Always returns the same enumeration-safe body, even on
+     * an invalid token, so the response never leaks token validity or account existence.
+     */
+    #[\Maho\Config\Route('/sociallogin/otp/link/request', name: 'sociallogin.otp.link_request')]
+    public function linkRequestAction(): void
+    {
+        if (($guard = $this->_guard()) !== null) {
+            $this->_json($guard[0], $guard[1]);
+            return;
+        }
+
+        $req      = $this->getRequest();
+        $provider = (string) $req->getPost('provider', '');
+        $token    = (string) $req->getPost('token', '');
+
+        try {
+            Mage::helper('sociallogin')->requestOtpLink($provider, $token, $this->_storeId(), $this->_ip());
+        } catch (Exception $e) {
+            // Swallow: do not reveal token validity or account existence.
+            Mage::log('OTP link request error: ' . $e->getMessage(), null, 'social_login.log');
+        }
+
+        $this->_json([
+            'ok'      => true,
+            'message' => 'If your details match an account, a verification code has been sent.',
+        ]);
+    }
+
+    /**
+     * POST /sociallogin/otp/link/verify
+     * Verify a 'link' OTP, attach the social identity to the customer that owns the
+     * verified provider email, and sign them in.
+     */
+    #[\Maho\Config\Route('/sociallogin/otp/link/verify', name: 'sociallogin.otp.link_verify')]
+    public function linkVerifyAction(): void
+    {
+        if (($guard = $this->_guard()) !== null) {
+            $this->_json($guard[0], $guard[1]);
+            return;
+        }
+
+        $req      = $this->getRequest();
+        $provider = (string) $req->getPost('provider', '');
+        $token    = (string) $req->getPost('token', '');
+        $code     = (string) $req->getPost('code', '');
+
+        try {
+            $res = Mage::helper('sociallogin')->completeOtpLink($provider, $token, $code, $this->_storeId());
+        } catch (Exception $e) {
+            Mage::log('OTP link verify error: ' . $e->getMessage(), null, 'social_login.log');
+            $this->_json(['ok' => false, 'message' => 'Invalid or expired code.']);
+            return;
+        }
+
+        if (empty($res['ok'])) {
+            $this->_json(['ok' => false, 'message' => 'Invalid or expired code.']);
+            return;
+        }
+
+        /** @var Mage_Customer_Model_Customer $customer */
+        $customer = $res['customer'];
+        $session = Mage::getSingleton('customer/session');
+        if (!$customer->getId() || !$session->loginById((int) $customer->getId())) {
+            $this->_json(['ok' => false, 'message' => 'Could not sign in.']);
+            return;
+        }
+
+        $this->_json(['ok' => true, 'redirect' => $this->_resolveRedirect()]);
+    }
+
+    /**
      * Common precondition guard for every action. Returns [body, httpCode] to emit, or
      * null when the request passes (POST, OTP enabled, valid form key).
      *

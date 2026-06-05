@@ -22,6 +22,7 @@ foreach ($providers as $p) {
      <?php if ($google): ?>data-google-client-id="<?= $this->escapeHtml($google['clientId']) ?>"<?php endif ?>
      <?php if ($apple): ?>data-apple-service-id="<?= $this->escapeHtml($apple['serviceId']) ?>"<?php endif ?>
      <?php if ($facebook): ?>data-facebook-app-id="<?= $this->escapeHtml($facebook['appId']) ?>"<?php endif ?>
+     <?php if ($this->isOtpEnabled()): ?>data-otp-link-request-url="<?= $this->escapeUrl($this->getOtpLinkRequestUrl()) ?>" data-otp-link-verify-url="<?= $this->escapeUrl($this->getOtpLinkVerifyUrl()) ?>"<?php endif ?>
 >
     <?php if (!$this->getHideDivider()): ?>
     <div class="social-login-divider">
@@ -68,6 +69,28 @@ foreach ($providers as $p) {
                 <a href="<?= $this->getUrl('customer/account/forgotpassword') ?>" class="f-left"><?= $this->__('Forgot Your Password?') ?></a>
             </div>
         </div>
+
+        <?php if ($this->isOtpEnabled()): ?>
+        <!-- Alternative: link via an emailed verification code instead of the password. -->
+        <div class="social-login-otp-link">
+            <p class="social-login-otp-link-start">
+                <button type="button" class="social-login-link-otp" data-otp-link-start><?= $this->escapeHtml($this->__('Email me a code instead')) ?></button>
+            </p>
+            <div class="social-login-otp-link-code" style="display:none">
+                <ul class="form-list">
+                    <li>
+                        <label for="social-link-otp-code" class="required"><?= $this->escapeHtml($this->__('Verification code')) ?></label>
+                        <div class="input-box">
+                            <input type="text" id="social-link-otp-code" class="input-text" inputmode="numeric" autocomplete="one-time-code" />
+                        </div>
+                    </li>
+                </ul>
+                <div class="buttons-set">
+                    <button type="button" class="button" data-otp-link-verify><span><?= $this->escapeHtml($this->__('Verify code')) ?></span></button>
+                </div>
+            </div>
+        </div>
+        <?php endif ?>
     </div>
 
     <div id="social-login-error" class="social-login-message social-login-error" style="display:none"></div>

@@ -220,4 +220,58 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
         if (strpos($digits, '+') !== 0 && $digits !== '') { $digits = '+' . $digits; }
         return $digits;
     }
+
+    /**
+     * Request an OTP to link a social account to the existing customer that owns the
+     * provider email. The email is derived from the VERIFIED social token, never from
+     * the client, so a caller cannot trigger a link code for an arbitrary address.
+     * Enumeration-safe: returns the same shape regardless of account existence.
+     *
+     * @return array{ok: bool}
+     */
+    public function requestOtpLink(string $provider, string $token, ?int $storeId = null, ?string $ip = null): array
+    {
+        $claims = $this->getProvider($provider)->verifyToken($token); // throws on invalid token
+        $email = $claims['email'] ?? null;
+        if (!$email) {
+            throw Mage::exception('Mage_Core', $this->__('Unable to link. No email on the social account.'));
+        }
+        Mage::helper('sociallogin/otp')->requestCode($this->normaliseEmail($email), 'link', 'email', $storeId, $ip);
+        return ['ok' => true];
+    }
+
+    /**
+     * Complete an OTP-based social link: re-verify the token (to re-derive email +
+     * providerId server-side), verify the OTP, then attach the identity to the customer
+     * that owns the email. Returns the customer on success for the caller to log in.
+     *
+     * @return array{ok: bool, customer?: Mage_Customer_Model_Customer}
+     */
+    public function completeOtpLink(string $provider, string $token, string $code, ?int $storeId = null): array
+    {
+        $claims = $this->getProvider($provider)->verifyToken($token);
+        $providerId = (string) $claims['sub'];
+        $email = $claims['email'] ?? null;
+        if (!$email) {
+            return ['ok' => false];
+        }
+        $normEmail = $this->normaliseEmail($email);
+        $res = Mage::helper('sociallogin/otp')->verifyCode($normEmail, 'link', $code, $storeId);
+        if (empty($res['ok'])) {
+            return ['ok' => false];
+        }
+        /** @var Mage_Customer_Model_Customer $customer */
+        $customer = Mage::getModel('customer/customer')
+            ->setWebsiteId((int) Mage::app()->getStore()->getWebsiteId())
+            ->loadByEmail($normEmail);
+        if (!$customer->getId()) {
+            return ['ok' => false];
+        }
+        // Idempotent: only create the link if it does not already exist.
+        $existing = Mage::getModel('sociallogin/social_identity')->loadByProviderIdentity($provider, $providerId);
+        if (!$existing->getId()) {
+            $this->createSocialLink((int) $customer->getId(), $provider, $providerId, $email);
+        }
+        return ['ok' => true, 'customer' => $customer];
+    }
 }
