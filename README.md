@@ -229,68 +229,76 @@ Each provider uses a different verification method:
 
 Google and Apple tokens are verified locally using `firebase/php-jwt` (already in Maho's vendor). Facebook tokens require a server-side API call using the App Secret.
 
-## OTP / passwordless login
+## SMS one-time-code login + Magic Link
 
-In addition to social providers, the module ships a passwordless one-time-code (OTP) flow. It covers four scenarios:
+Passwordless login in Maho comes in two complementary parts:
 
-- **Passwordless login** - an existing customer requests a code (email or SMS) and signs in with it, no password required.
-- **OTP-based registration** - a brand-new customer verifies a code and an account is created for them (with a random internal password, so traditional password login still works later).
-- **Social-account linking** - when a social sign-in lands on an email that already has an account, the customer can prove ownership with a code instead of being asked for the account password.
-- **Add / verify mobile** - a logged-in customer adds a mobile number and confirms it with a code.
+- **Email passwordless login is provided by Maho core (Magic Link).** Core emails a single-use sign-in link to the customer's address; the customer clicks it and is logged in, no password required. That feature lives entirely in core under `customer/login/magic_link_*` (endpoints `customer/account/magiclinkrequestpost` and `customer/account/magiclinklogin`). This module does **not** duplicate it - configure Magic Link in core if you want email passwordless login.
+- **SMS one-time-code login is added by this module.** It is the SMS counterpart of Magic Link: the customer enters their email, a 6-digit code is texted to the verified mobile on file for that account, and entering the code signs them in. The module also ships the add/verify-mobile flow and a pluggable SMS provider, and integrates the SMS code form into the storefront login template.
 
-Email is the account identity. SMS is an optional second channel delivered through a pluggable provider (Clickatell is the first one shipped).
+### SMS login flow
 
-### Both storefronts
+1. On the login page the customer enters their **email**.
+2. The module looks up the account for that email and its **verified mobile** number, then texts a single-use code to that mobile. The on-screen response is identical whether or not a matching account/mobile exists (enumeration-safe), so nothing is revealed to a stranger.
+3. The customer types the code; on success they are logged in via `loginById`.
 
-The OTP flow works on both front ends:
+Endpoints (POST, JSON, form-key protected):
 
-- **Maho frontend** - the `OtpController` exposes the POST endpoints and the login page renders the OTP form (request a code, then verify it).
-- **Headless API** - the storefront calls the API endpoints:
+```
+POST /sociallogin/otp/request   (email, purpose=login)  -> texts the code to the account's verified mobile
+POST /sociallogin/otp/verify    (email, code)           -> verifies and signs the customer in
+```
 
-  ```
-  POST /customers/otp/request
-  POST /customers/otp/verify
-  ```
+> **Requirement:** SMS login only works for an account that already has a **verified mobile** on file. A customer sets one via the add-mobile flow below. With no verified mobile, no code is sent (silently, to stay enumeration-safe), so the customer cannot complete SMS login.
 
-  The request endpoint mints and delivers a code; the verify endpoint checks it and returns an auth token on success. Responses are enumeration-safe (see below).
+### Add / verify mobile flow
+
+A logged-in customer registers a mobile number and confirms ownership with an SMS code before it is stored as verified:
+
+```
+POST /sociallogin/otp/request     (mobile, purpose=add_mobile)  -> texts a code to that mobile
+POST /sociallogin/otp/add-mobile  (mobile, code)                -> verifies and saves mobile + mobile_verified
+```
+
+On success the `mobile` and `mobile_verified` customer attributes are set, which then unlocks SMS login for that account.
 
 ### Configuration
 
-All OTP settings live under **System > Configuration > Customers > Social Login** in the Maho admin, alongside the social provider settings:
+All settings live under **System > Configuration > Customers > Social Login** in the Maho admin, alongside the social provider settings:
 
-| Setting | Purpose |
-|---------|---------|
-| Enable passwordless OTP login | Master toggle for the whole OTP feature |
-| OTP code length | Number of digits in a generated code |
-| OTP expiry (minutes) | How long a code stays valid (default 10) |
-| Max verify attempts per code | Attempt cap before a code is locked |
-| Resend cooldown (seconds) | Minimum interval between code requests (anti click-spam) |
-| Rate limit: max requests per identifier / window | Per-identifier volume limit |
-| Rate limit: max requests per IP / window | Per-IP volume limit |
-| Enable SMS channel | Turn on SMS delivery |
-| SMS provider | Which provider to use for SMS |
-| Clickatell API Key / Sender ID | Credentials for the Clickatell provider |
-| OTP server pepper (secret) | Dedicated secret used to hash codes (see Security notes) |
+| Setting | Config key (`customer/sociallogin/...`) | Purpose |
+|---------|------------------------------------------|---------|
+| Enable SMS one-time-code login | `otp_enabled` | Master toggle for the SMS code feature |
+| OTP code length | `otp_length` | Number of digits in a generated code |
+| OTP expiry (minutes) | `otp_expiry_minutes` | How long a code stays valid (default 10) |
+| Max verify attempts per code | `otp_max_attempts` | Attempt cap before a code is locked |
+| Resend cooldown (seconds) | `otp_resend_cooldown` | Minimum interval between code requests (anti click-spam) |
+| Rate limit: max requests per identifier / window | `otp_rl_identifier_count` / `otp_rl_identifier_window` | Per-identifier volume limit |
+| Rate limit: max requests per IP / window | `otp_rl_ip_count` / `otp_rl_ip_window` | Per-IP volume limit |
+| Enable SMS channel (Clickatell) | `otp_sms_enabled` | Gates the actual SMS send |
+| SMS provider | `otp_sms_provider` | Which provider delivers the SMS |
+| Clickatell API Key / Sender ID | `otp_clickatell_api_key` / `otp_clickatell_sender` | Credentials for the Clickatell provider |
+| OTP server pepper (secret) | `otp_pepper` | Dedicated secret used to hash codes (see Security notes) |
 
 The sub-fields are hidden until the master toggle is on, and the provider credential fields appear only when the SMS channel is enabled.
 
-### SMS providers
+### Pluggable SMS providers
 
 SMS delivery is pluggable. Clickatell is the first provider, selected via the **SMS provider** dropdown. To add another provider:
 
 1. Create `Model/Sms/Provider/<Name>.php` implementing `Model/Sms/ProviderInterface`.
-2. Add a matching entry to the SMS provider dropdown source.
+2. Add a matching entry to `Model/System/Config/Source/SmsProvider` so it appears in the dropdown.
 
-No core changes are needed - the dropdown selection picks the active provider at send time.
+No core changes are needed - `Helper/Sms` resolves the active provider from the dropdown selection at send time.
 
 ### Security notes
 
-The OTP flow is hardened, but a couple of residual limitations are documented honestly below.
+The SMS code flow is hardened, but a couple of residual limitations are documented honestly below.
 
-- **Codes at rest** - codes are hashed (SHA-256 with a server-side pepper), single-use, and short-lived (default 10 minute expiry). Each code is attempt-capped, and requests are rate-limited per identifier and per IP. A resend cooldown blocks click-spam.
-- **Enumeration-safe responses** - the request endpoint returns a uniform body whether or not an account exists, so the response never reveals account existence or throttling state.
+- **Codes at rest** - codes are hashed (SHA-256 with a server-side pepper, single-use, short-lived; default 10 minute expiry). Only one live code exists per identifier at a time, each code is attempt-capped, the consume is a single atomic update (no double-use races), and requests are rate-limited per identifier and per IP. A resend cooldown blocks click-spam.
+- **Enumeration-safe responses** - the request endpoint returns a uniform body whether or not an account (or verified mobile) exists, so the response never reveals account existence or throttling state.
 - **Pepper** - a dedicated `otp_pepper` is recommended. If it is left blank the install crypt key is used instead (codes are never hashed unsalted), but a distinct pepper is stronger because it isolates OTP hashing from every other use of the crypt key.
-- **Timing-based enumeration (residual)** - although the response body is uniform, a login or link request for an existing account triggers synchronous code delivery, so response latency could still hint at whether an account exists. This is inherent to delivering the code inline. A future enhancement could flush the response before delivery, or hand delivery to an async sender.
+- **Timing-based enumeration (residual)** - although the response body is uniform, a login request for an existing account with a verified mobile triggers synchronous code delivery, so response latency could still hint at whether such an account exists. This is inherent to delivering the code inline. A future enhancement could flush the response before delivery, or hand delivery to an async sender.
 - **Multi-store scope (residual)** - OTP rows are not scoped by `store_id`; the current design assumes a single-website deployment. In a multi-website install that shares (or leaves blank) the pepper, a code could be valid across websites. This is a documented limitation; per-store scoping is a future enhancement.
 
 ## License
