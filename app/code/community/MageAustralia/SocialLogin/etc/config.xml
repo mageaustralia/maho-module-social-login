@@ -74,6 +74,18 @@
                 <facebook_enabled>0</facebook_enabled>
                 <facebook_app_id/>
                 <facebook_app_secret backend_model="adminhtml/system_config_backend_encrypted"/>
+                <otp_enabled>0</otp_enabled>
+                <otp_length>6</otp_length>
+                <otp_expiry_minutes>10</otp_expiry_minutes>
+                <otp_max_attempts>5</otp_max_attempts>
+                <otp_rl_identifier_count>3</otp_rl_identifier_count>
+                <otp_rl_identifier_window>300</otp_rl_identifier_window>
+                <otp_rl_ip_count>15</otp_rl_ip_count>
+                <otp_rl_ip_window>3600</otp_rl_ip_window>
+                <otp_sms_enabled>0</otp_sms_enabled>
+                <otp_clickatell_api_key backend_model="adminhtml/system_config_backend_encrypted"/>
+                <otp_clickatell_sender/>
+                <otp_pepper backend_model="adminhtml/system_config_backend_encrypted"/>
             </sociallogin>
         </customer>
     </default>
