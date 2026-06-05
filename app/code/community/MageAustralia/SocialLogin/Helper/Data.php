@@ -187,7 +187,7 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
 
     public function isOtpEnabled(?int $storeId = null): bool { return (bool) Mage::getStoreConfig('customer/sociallogin/otp_enabled', $storeId); }
     public function isOtpSmsEnabled(?int $storeId = null): bool { return (bool) Mage::getStoreConfig('customer/sociallogin/otp_sms_enabled', $storeId); }
-    public function getOtpLength(?int $storeId = null): int { return max(4, (int) Mage::getStoreConfig('customer/sociallogin/otp_length', $storeId)); }
+    public function getOtpLength(?int $storeId = null): int { return max(4, min(10, (int) Mage::getStoreConfig('customer/sociallogin/otp_length', $storeId))); }
     public function getOtpExpiryMinutes(?int $storeId = null): int { return max(1, min(10, (int) Mage::getStoreConfig('customer/sociallogin/otp_expiry_minutes', $storeId))); }
     public function getOtpMaxAttempts(?int $storeId = null): int { return max(1, (int) Mage::getStoreConfig('customer/sociallogin/otp_max_attempts', $storeId)); }
 
@@ -195,7 +195,17 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
     // so getStoreConfig AUTO-DECRYPTS them. Do NOT decrypt() again (would double-decrypt to empty).
     public function getClickatellApiKey(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_clickatell_api_key', $storeId); }
     public function getClickatellSender(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_clickatell_sender', $storeId); }
-    public function getOtpPepper(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_pepper', $storeId); }
+    public function getOtpPepper(?int $storeId = null): string
+    {
+        // Encrypted backend_model config auto-decrypts on read (do NOT decrypt() again).
+        $pepper = (string) Mage::getStoreConfig('customer/sociallogin/otp_pepper', $storeId);
+        if ($pepper === '') {
+            // Never hash unsalted: fall back to the install crypt key so a DB-only leak
+            // cannot brute-force short codes. A dedicated pepper is still recommended.
+            $pepper = (string) Mage::getConfig()->getNode('global/crypt/key');
+        }
+        return $pepper;
+    }
 
     public function getSmsProvider(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_sms_provider', $storeId) ?: 'clickatell'; }
     public function getOtpResendCooldown(?int $storeId = null): int { return max(0, (int) Mage::getStoreConfig('customer/sociallogin/otp_resend_cooldown', $storeId)); }

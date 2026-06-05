@@ -13,6 +13,7 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
      */
     public function requestCode(string $identifier, string $purpose, string $channel, ?int $storeId = null, ?string $ip = null): array
     {
+        $identifier = $this->_normaliseIdentifier($identifier);
         $helper = Mage::helper('sociallogin');
         if (!in_array($purpose, self::PURPOSES, true)) {
             return ['ok' => false, 'throttled' => false, 'channel' => $channel];
@@ -33,6 +34,7 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
             ->add(new DateInterval('PT' . $helper->getOtpExpiryMinutes($storeId) . 'M'))
             ->format('Y-m-d H:i:s');
 
+        $this->_consumeOpenCodes($identifier, $purpose);
         Mage::getModel('sociallogin/otp')
             ->setIdentifier($identifier)->setPurpose($purpose)->setChannel($channel)
             ->setCodeHash($this->_hash($code, $storeId))->setAttempts(0)
@@ -41,7 +43,7 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
 
         // Only actually deliver if the action makes sense (e.g. for login, the account
         // must exist). Whether it exists is NOT revealed in the return value.
-        $send = $this->_shouldSend($identifier, $purpose);
+        $send = $this->_shouldSend($identifier, $purpose, $storeId);
         if ($send) {
             $delivered = $this->_channel($channel)->send($identifier, $code, $purpose, $storeId);
             if (!$delivered && $channel === 'sms') {
@@ -60,6 +62,7 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
      */
     public function verifyCode(string $identifier, string $purpose, string $code, ?int $storeId = null): array
     {
+        $identifier = $this->_normaliseIdentifier($identifier);
         $helper = Mage::helper('sociallogin');
         $now = Mage_Core_Model_Locale::nowUtc();
         /** @var MageAustralia_SocialLogin_Model_Otp $row */
@@ -84,18 +87,54 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
             return ['ok' => false, 'reason' => 'invalid'];
         }
 
-        $row->setConsumedAt($now)->save();
+        $resource = Mage::getSingleton('core/resource');
+        $write = $resource->getConnection('core_write');
+        $table = $resource->getTableName('sociallogin_otp');
+        $affected = $write->update(
+            $table,
+            ['consumed_at' => $now],
+            ['otp_id = ?' => (int) $row->getId(), 'consumed_at IS NULL'],
+        );
+        if ($affected < 1) {
+            // Lost the race - another request already consumed this code.
+            return ['ok' => false, 'reason' => 'invalid'];
+        }
         return ['ok' => true, 'reason' => 'ok'];
     }
 
-    protected function _shouldSend(string $identifier, string $purpose): bool
+    protected function _normaliseIdentifier(string $identifier): string
+    {
+        $helper = Mage::helper('sociallogin');
+        return strpos($identifier, '@') !== false
+            ? $helper->normaliseEmail($identifier)
+            : $helper->normaliseMobile($identifier);
+    }
+
+    /**
+     * Invalidate any prior unconsumed codes for this (identifier, purpose) so the
+     * per-code attempt cap cannot be reset by repeatedly minting new codes.
+     */
+    protected function _consumeOpenCodes(string $identifier, string $purpose): void
+    {
+        $resource = Mage::getSingleton('core/resource');
+        $write = $resource->getConnection('core_write');
+        $table = $resource->getTableName('sociallogin_otp');
+        $write->update(
+            $table,
+            ['consumed_at' => Mage_Core_Model_Locale::nowUtc()],
+            ['identifier = ?' => $identifier, 'purpose = ?' => $purpose, 'consumed_at IS NULL'],
+        );
+    }
+
+    protected function _shouldSend(string $identifier, string $purpose, ?int $storeId = null): bool
     {
         if ($purpose === 'register' || $purpose === 'add_mobile') {
-            return true; // register: identifier is new; add_mobile: caller is authenticated
+            return true;
         }
-        // login / link: only deliver if a customer with this email exists
-        $website = Mage::app()->getStore()->getWebsiteId();
-        $customer = Mage::getModel('customer/customer')->setWebsiteId($website)->loadByEmail($identifier);
+        $websiteId = $storeId !== null
+            ? (int) Mage::app()->getStore($storeId)->getWebsiteId()
+            : (int) Mage::app()->getStore()->getWebsiteId();
+        $customer = Mage::getModel('customer/customer')->setWebsiteId($websiteId)->loadByEmail($identifier);
         return (bool) $customer->getId();
     }
 
