@@ -99,58 +99,86 @@
                         <otp_length translate="label">
                             <label>OTP code length</label>
                             <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>90</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_length>
                         <otp_expiry_minutes translate="label">
                             <label>OTP expiry (minutes)</label>
                             <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>100</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_expiry_minutes>
                         <otp_max_attempts translate="label">
                             <label>Max verify attempts per code</label>
                             <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>110</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_max_attempts>
                         <otp_rl_identifier_count translate="label">
                             <label>Rate limit: max requests per identifier</label>
                             <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>120</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_rl_identifier_count>
                         <otp_rl_identifier_window translate="label">
                             <label>Rate limit: identifier window (seconds)</label>
                             <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>130</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_rl_identifier_window>
                         <otp_rl_ip_count translate="label">
                             <label>Rate limit: max requests per IP</label>
                             <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>140</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_rl_ip_count>
                         <otp_rl_ip_window translate="label">
                             <label>Rate limit: IP window (seconds)</label>
                             <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>150</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_rl_ip_window>
                         <otp_sms_enabled translate="label">
                             <label>Enable SMS channel (Clickatell)</label>
@@ -160,6 +188,9 @@
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_sms_enabled>
                         <otp_sms_provider translate="label">
                             <label>SMS provider</label>
@@ -169,15 +200,22 @@
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_sms_provider>
-                        <otp_clickatell_api_key translate="label">
+                        <otp_clickatell_api_key translate="label comment">
                             <label>Clickatell API Key</label>
+                            <comment>API key for the selected SMS provider (Clickatell).</comment>
                             <frontend_type>obscure</frontend_type>
                             <backend_model>adminhtml/system_config_backend_encrypted</backend_model>
                             <sort_order>170</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_sms_enabled>1</otp_sms_enabled>
+                            </depends>
                         </otp_clickatell_api_key>
                         <otp_clickatell_sender translate="label">
                             <label>Clickatell Sender ID</label>
@@ -186,23 +224,34 @@
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_sms_enabled>1</otp_sms_enabled>
+                            </depends>
                         </otp_clickatell_sender>
-                        <otp_pepper translate="label">
+                        <otp_pepper translate="label comment">
                             <label>OTP server pepper (secret)</label>
+                            <comment>Optional dedicated secret used to hash codes. If left blank the install crypt key is used. Changing this invalidates all codes currently in flight.</comment>
                             <frontend_type>obscure</frontend_type>
                             <backend_model>adminhtml/system_config_backend_encrypted</backend_model>
                             <sort_order>190</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_pepper>
                         <otp_resend_cooldown translate="label">
                             <label>Resend cooldown (seconds, anti click-spam)</label>
                             <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>200</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
                         </otp_resend_cooldown>
                     </fields>
                 </sociallogin>

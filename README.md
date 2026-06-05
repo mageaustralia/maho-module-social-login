@@ -229,6 +229,70 @@ Each provider uses a different verification method:
 
 Google and Apple tokens are verified locally using `firebase/php-jwt` (already in Maho's vendor). Facebook tokens require a server-side API call using the App Secret.
 
+## OTP / passwordless login
+
+In addition to social providers, the module ships a passwordless one-time-code (OTP) flow. It covers four scenarios:
+
+- **Passwordless login** - an existing customer requests a code (email or SMS) and signs in with it, no password required.
+- **OTP-based registration** - a brand-new customer verifies a code and an account is created for them (with a random internal password, so traditional password login still works later).
+- **Social-account linking** - when a social sign-in lands on an email that already has an account, the customer can prove ownership with a code instead of being asked for the account password.
+- **Add / verify mobile** - a logged-in customer adds a mobile number and confirms it with a code.
+
+Email is the account identity. SMS is an optional second channel delivered through a pluggable provider (Clickatell is the first one shipped).
+
+### Both storefronts
+
+The OTP flow works on both front ends:
+
+- **Maho frontend** - the `OtpController` exposes the POST endpoints and the login page renders the OTP form (request a code, then verify it).
+- **Headless API** - the storefront calls the API endpoints:
+
+  ```
+  POST /customers/otp/request
+  POST /customers/otp/verify
+  ```
+
+  The request endpoint mints and delivers a code; the verify endpoint checks it and returns an auth token on success. Responses are enumeration-safe (see below).
+
+### Configuration
+
+All OTP settings live under **System > Configuration > Customers > Social Login** in the Maho admin, alongside the social provider settings:
+
+| Setting | Purpose |
+|---------|---------|
+| Enable passwordless OTP login | Master toggle for the whole OTP feature |
+| OTP code length | Number of digits in a generated code |
+| OTP expiry (minutes) | How long a code stays valid (default 10) |
+| Max verify attempts per code | Attempt cap before a code is locked |
+| Resend cooldown (seconds) | Minimum interval between code requests (anti click-spam) |
+| Rate limit: max requests per identifier / window | Per-identifier volume limit |
+| Rate limit: max requests per IP / window | Per-IP volume limit |
+| Enable SMS channel | Turn on SMS delivery |
+| SMS provider | Which provider to use for SMS |
+| Clickatell API Key / Sender ID | Credentials for the Clickatell provider |
+| OTP server pepper (secret) | Dedicated secret used to hash codes (see Security notes) |
+
+The sub-fields are hidden until the master toggle is on, and the provider credential fields appear only when the SMS channel is enabled.
+
+### SMS providers
+
+SMS delivery is pluggable. Clickatell is the first provider, selected via the **SMS provider** dropdown. To add another provider:
+
+1. Create `Model/Sms/Provider/<Name>.php` implementing `Model/Sms/ProviderInterface`.
+2. Add a matching entry to the SMS provider dropdown source.
+
+No core changes are needed - the dropdown selection picks the active provider at send time.
+
+### Security notes
+
+The OTP flow is hardened, but a couple of residual limitations are documented honestly below.
+
+- **Codes at rest** - codes are hashed (SHA-256 with a server-side pepper), single-use, and short-lived (default 10 minute expiry). Each code is attempt-capped, and requests are rate-limited per identifier and per IP. A resend cooldown blocks click-spam.
+- **Enumeration-safe responses** - the request endpoint returns a uniform body whether or not an account exists, so the response never reveals account existence or throttling state.
+- **Pepper** - a dedicated `otp_pepper` is recommended. If it is left blank the install crypt key is used instead (codes are never hashed unsalted), but a distinct pepper is stronger because it isolates OTP hashing from every other use of the crypt key.
+- **Timing-based enumeration (residual)** - although the response body is uniform, a login or link request for an existing account triggers synchronous code delivery, so response latency could still hint at whether an account exists. This is inherent to delivering the code inline. A future enhancement could flush the response before delivery, or hand delivery to an async sender.
+- **Multi-store scope (residual)** - OTP rows are not scoped by `store_id`; the current design assumes a single-website deployment. In a multi-website install that shares (or leaves blank) the pepper, a code could be valid across websites. This is a documented limitation; per-store scoping is a future enhancement.
+
 ## License
 
 OSL-3.0 — matches the Maho core base.

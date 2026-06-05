@@ -192,11 +192,17 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
         }
 
         $customerId = (int) Mage::getSingleton('customer/session')->getCustomer()->getId();
-        /** @var Mage_Customer_Model_Customer $customer */
-        $customer = Mage::getModel('customer/customer')->load($customerId);
-        $customer->setMobile($mobile)
-            ->setMobileVerified(Mage_Core_Model_Locale::nowUtc())
-            ->save();
+        try {
+            /** @var Mage_Customer_Model_Customer $customer */
+            $customer = Mage::getModel('customer/customer')->load($customerId);
+            $customer->setMobile($mobile)
+                ->setMobileVerified(Mage_Core_Model_Locale::nowUtc())
+                ->save();
+        } catch (Exception $e) {
+            Mage::logException($e);
+            $this->_json(['ok' => false, 'message' => 'Could not save your mobile. Please try again.']);
+            return;
+        }
 
         $this->_json(['ok' => true, 'message' => 'Mobile verified.']);
     }
