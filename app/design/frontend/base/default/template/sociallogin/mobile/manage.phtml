@@ -1,0 +1,159 @@
+<?php
+/**
+ * MageAustralia Social Login - account-page add/verify mobile UI.
+ *
+ * Lets a logged-in customer set a mobile number and SMS-verify it, after which
+ * they can sign in by SMS one-time code. Renders on the account dashboard.
+ *
+ * @var MageAustralia_SocialLogin_Block_Mobile $this
+ */
+if (!$this->isEnabled()) {
+    return;
+}
+
+$verified = $this->isMobileVerified();
+$current  = $this->getCurrentMobile();
+?>
+<style>
+.mha-mobile { margin: 1.5rem 0; }
+.mha-mobile h3 { margin: 0 0 .5rem; font-size: 1.1rem; }
+.mha-mobile-current { margin: 0 0 .75rem; }
+.mha-mobile-verified { color: #2e7d32; font-weight: 600; }
+.mha-mobile-field { margin: .5rem 0; }
+.mha-mobile-field input { padding: .55rem .65rem; box-sizing: border-box; min-width: 16rem; max-width: 100%; }
+.mha-mobile button { cursor: pointer; padding: .5rem .9rem; margin-top: .35rem; }
+.mha-mobile-code-step { margin-top: .5rem; }
+.mha-mobile-msg { margin-top: .5rem; font-size: .9rem; min-height: 1em; }
+</style>
+<div class="mha-mobile"
+     data-request-url="<?= $this->escapeUrl($this->getRequestUrl()) ?>"
+     data-verify-url="<?= $this->escapeUrl($this->getVerifyUrl()) ?>"
+     data-form-key="<?= $this->escapeHtml($this->getFormKey()) ?>">
+
+    <h3><?= $this->escapeHtml($this->__('Mobile number for SMS sign-in')) ?></h3>
+
+    <?php if ($verified): ?>
+        <p class="mha-mobile-current">
+            <?= $this->escapeHtml($this->__('Your verified mobile:')) ?>
+            <strong><?= $this->escapeHtml($current) ?></strong>
+            <span class="mha-mobile-verified" aria-label="<?= $this->escapeHtml($this->__('verified')) ?>">&#10003; <?= $this->escapeHtml($this->__('verified')) ?></span>
+        </p>
+        <p><?= $this->escapeHtml($this->__('You can change it below - we will send a code to confirm the new number.')) ?></p>
+    <?php else: ?>
+        <p class="mha-mobile-current"><?= $this->escapeHtml($this->__('Add a mobile number and verify it by SMS to sign in with a one-time code.')) ?></p>
+    <?php endif ?>
+
+    <div class="mha-mobile-field">
+        <input type="tel" class="mha-mobile-input" inputmode="tel" autocomplete="tel"
+               value="<?= $verified ? $this->escapeHtml($current) : '' ?>"
+               placeholder="<?= $this->escapeHtml($this->__('Mobile number')) ?>">
+    </div>
+    <button type="button" class="mha-mobile-send"><?= $this->escapeHtml($this->__('Send code')) ?></button>
+
+    <div class="mha-mobile-code-step" style="display:none">
+        <div class="mha-mobile-field">
+            <input type="text" class="mha-mobile-code" inputmode="numeric" maxlength="10"
+                   autocomplete="one-time-code"
+                   placeholder="<?= $this->escapeHtml($this->__('Enter the code')) ?>">
+        </div>
+        <button type="button" class="mha-mobile-verify"><?= $this->escapeHtml($this->__('Verify mobile')) ?></button>
+    </div>
+
+    <div class="mha-mobile-msg" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+(function () {
+    function initRoot(root) {
+        if (root.dataset.mhaMobileReady) { return; }
+        root.dataset.mhaMobileReady = '1';
+
+        var formKey = root.getAttribute('data-form-key') || '';
+        var requestUrl = root.getAttribute('data-request-url') || '';
+        var verifyUrl = root.getAttribute('data-verify-url') || '';
+
+        var mobileInput = root.querySelector('.mha-mobile-input');
+        var sendBtn = root.querySelector('.mha-mobile-send');
+        var codeStep = root.querySelector('.mha-mobile-code-step');
+        var codeInput = root.querySelector('.mha-mobile-code');
+        var verifyBtn = root.querySelector('.mha-mobile-verify');
+        var msg = root.querySelector('.mha-mobile-msg');
+
+        function mobileValue() {
+            return mobileInput ? mobileInput.value.trim() : '';
+        }
+        function setMsg(text) {
+            if (msg) { msg.textContent = text || ''; }
+        }
+
+        function post(url, params) {
+            var body = new URLSearchParams(params);
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin',
+                body: body.toString()
+            }).then(function (r) { return r.json(); });
+        }
+
+        if (sendBtn) {
+            sendBtn.addEventListener('click', function () {
+                if (sendBtn.disabled) { return; }
+                var mobile = mobileValue();
+                if (!mobile) { setMsg('Please enter your mobile number.'); return; }
+                sendBtn.disabled = true;
+                setMsg('');
+                post(requestUrl, { form_key: formKey, purpose: 'add_mobile', mobile: mobile })
+                    .then(function (data) {
+                        if (codeStep) { codeStep.style.display = ''; }
+                        setMsg((data && data.message) ? data.message : '');
+                        if (codeInput) { codeInput.focus(); }
+                    })
+                    .catch(function () { setMsg('Something went wrong. Please try again.'); })
+                    .finally(function () {
+                        setTimeout(function () { sendBtn.disabled = false; }, 15000);
+                    });
+            });
+        }
+
+        if (verifyBtn) {
+            verifyBtn.addEventListener('click', function () {
+                if (verifyBtn.disabled) { return; }
+                var mobile = mobileValue();
+                var code = codeInput ? codeInput.value.trim() : '';
+                if (!mobile || !code) { setMsg('Please enter the code we sent you.'); return; }
+                verifyBtn.disabled = true;
+                setMsg('');
+                post(verifyUrl, { form_key: formKey, mobile: mobile, code: code })
+                    .then(function (data) {
+                        if (data && data.ok) {
+                            setMsg((data && data.message) ? data.message : 'Mobile verified.');
+                            setTimeout(function () { window.location.reload(); }, 800);
+                            return;
+                        }
+                        setMsg((data && data.message) ? data.message : 'Invalid or expired code.');
+                        verifyBtn.disabled = false;
+                    })
+                    .catch(function () {
+                        setMsg('Something went wrong. Please try again.');
+                        verifyBtn.disabled = false;
+                    });
+            });
+        }
+    }
+
+    function initAll() {
+        var roots = document.querySelectorAll('.mha-mobile');
+        for (var i = 0; i < roots.length; i++) { initRoot(roots[i]); }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAll);
+    } else {
+        initAll();
+    }
+})();
+</script>

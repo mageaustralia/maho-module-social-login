@@ -21,4 +21,11 @@
             <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=12</name></action>
         </reference>
     </customer_account_create>
+
+    <!-- Account dashboard: add/verify mobile number for SMS sign-in -->
+    <customer_account_index>
+        <reference name="content">
+            <block type="sociallogin/mobile" name="sociallogin.mobile" template="sociallogin/mobile/manage.phtml" />
+        </reference>
+    </customer_account_index>
 </layout>
