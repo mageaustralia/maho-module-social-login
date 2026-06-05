@@ -1,0 +1,36 @@
+<?php
+/**
+ * MageAustralia Social Login - OTP (email code) login form.
+ *
+ * Two-step UI (email -> code). NO nested <form>: this block renders inside the
+ * page login <form>, and nested forms are invalid HTML.
+ *
+ * @var MageAustralia_SocialLogin_Block_Otp_Form $this
+ */
+if (!$this->isEnabled()) {
+    return;
+}
+?>
+<div class="sociallogin-otp"
+     id="sociallogin-otp"
+     data-request-url="<?= $this->escapeUrl($this->getRequestUrl()) ?>"
+     data-verify-url="<?= $this->escapeUrl($this->getVerifyUrl()) ?>"
+     data-form-key="<?= $this->escapeHtml($this->getFormKey()) ?>"
+     data-cooldown="<?= (int) $this->getResendCooldown() ?>">
+    <div class="social-login-divider"><span><?= $this->__('or sign in with a code') ?></span></div>
+
+    <div class="sociallogin-otp-step" data-otp-step="email">
+        <label for="sociallogin-otp-email"><?= $this->__('Email address') ?></label>
+        <input type="email" id="sociallogin-otp-email" class="input-text" autocomplete="email" />
+        <button type="button" class="button" data-otp-send><span><?= $this->__('Email me a code') ?></span></button>
+    </div>
+
+    <div class="sociallogin-otp-step" data-otp-step="code" style="display:none">
+        <label for="sociallogin-otp-code"><?= $this->__('Enter the code we sent you') ?></label>
+        <input type="text" id="sociallogin-otp-code" class="input-text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" />
+        <button type="button" class="button" data-otp-verify><span><?= $this->__('Verify and sign in') ?></span></button>
+        <button type="button" class="sociallogin-otp-resend" data-otp-resend><?= $this->__('Resend code') ?></button>
+    </div>
+
+    <div class="sociallogin-otp-message social-login-message" style="display:none"></div>
+</div>

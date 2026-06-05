@@ -1,0 +1,53 @@
+.sociallogin-otp {
+    margin: 20px 0;
+}
+
+.sociallogin-otp-step {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.sociallogin-otp-step label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+}
+
+.sociallogin-otp-step .input-text {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sociallogin-otp-step .button {
+    width: 100%;
+}
+
+.sociallogin-otp .button[disabled],
+.sociallogin-otp .button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.sociallogin-otp-resend {
+    background: none;
+    border: none;
+    padding: 4px 0;
+    color: #1a5276;
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+    align-self: flex-start;
+}
+
+.sociallogin-otp-resend[disabled],
+.sociallogin-otp-resend:disabled {
+    color: #999;
+    text-decoration: none;
+    cursor: default;
+}
+
+.sociallogin-otp-message {
+    display: none;
+}

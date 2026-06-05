@@ -4,10 +4,13 @@
     <customer_account_login>
         <reference name="content">
             <block type="sociallogin/buttons" name="sociallogin.buttons" after="customer_form_login" template="sociallogin/buttons.phtml" />
+            <block type="sociallogin/otp_form" name="sociallogin.otp" after="sociallogin.buttons" template="sociallogin/otp/form.phtml" />
         </reference>
         <reference name="head">
             <action method="addItem"><type>skin_css</type><name>css/sociallogin.css?v=12</name></action>
             <action method="addItem"><type>skin_js</type><name>js/sociallogin.js?v=12</name></action>
+            <action method="addItem"><type>skin_css</type><name>css/sociallogin-otp.css?v=1</name></action>
+            <action method="addItem"><type>skin_js</type><name>js/sociallogin-otp.js?v=1</name></action>
         </reference>
     </customer_account_login>
 
