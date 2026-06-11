@@ -64,6 +64,30 @@
             </updates>
         </layout>
     </frontend>
+    <admin>
+        <routers>
+            <adminhtml>
+                <args>
+                    <modules>
+                        <mageaustralia_sociallogin before="Mage_Adminhtml">MageAustralia_SocialLogin_Adminhtml</mageaustralia_sociallogin>
+                    </modules>
+                </args>
+            </adminhtml>
+        </routers>
+    </admin>
+    <adminhtml>
+        <events>
+            <adminhtml_widget_container_html_before>
+                <observers>
+                    <sociallogin_add_promote_mobile_button>
+                        <type>singleton</type>
+                        <class>MageAustralia_SocialLogin_Model_Observer</class>
+                        <method>addPromoteMobileButton</method>
+                    </sociallogin_add_promote_mobile_button>
+                </observers>
+            </adminhtml_widget_container_html_before>
+        </events>
+    </adminhtml>
     <default>
         <customer>
             <sociallogin>

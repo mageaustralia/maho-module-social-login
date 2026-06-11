@@ -125,8 +125,10 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
     /**
      * Resolve the mobile number a code is SMS-delivered to.
      * - add_mobile: the identifier IS the mobile being verified.
-     * - login: the verified mobile of the customer that owns this email, or null
-     *   if no such customer or no verified mobile (delivery is then skipped).
+     * - login: the verified mobile of the customer that owns this email. If none,
+     *   we fall back to scanning the customer's address book for a valid mobile
+     *   in the default country — read-only (no DB write) so a hostile actor can't
+     *   weaponise an email to promote an address phone to verified.
      */
     protected function _deliveryMobile(string $identifier, string $purpose, ?int $storeId): ?string
     {
@@ -137,11 +139,17 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
             ? (int) Mage::app()->getStore($storeId)->getWebsiteId()
             : (int) Mage::app()->getStore()->getWebsiteId();
         $customer = Mage::getModel('customer/customer')->setWebsiteId($websiteId)->loadByEmail($identifier);
-        if (!$customer->getId() || !$customer->getMobileVerified()) {
+        if (!$customer->getId()) {
             return null;
         }
-        $mobile = (string) $customer->getMobile();
-        return $mobile !== '' ? $mobile : null;
+        if ($customer->getMobileVerified()) {
+            $mobile = (string) $customer->getMobile();
+            return $mobile !== '' ? $mobile : null;
+        }
+        // Fallback: look for a valid AU mobile (or whatever default-country is set
+        // to) on the customer's addresses. Read-only — does NOT persist to the
+        // customer record. Bulk promotion happens via the CLI sweep or admin button.
+        return Mage::helper('sociallogin')->findValidMobileFromAddresses($customer);
     }
 
     /**

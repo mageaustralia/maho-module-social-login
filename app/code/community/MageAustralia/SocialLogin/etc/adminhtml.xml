@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<config>
+    <acl>
+        <resources>
+            <admin>
+                <children>
+                    <customer>
+                        <children>
+                            <sociallogin_promote_mobile translate="title" module="sociallogin">
+                                <title>Pre-approve mobile from address (Social Login)</title>
+                                <sort_order>200</sort_order>
+                            </sociallogin_promote_mobile>
+                        </children>
+                    </customer>
+                </children>
+            </admin>
+        </resources>
+    </acl>
+</config>

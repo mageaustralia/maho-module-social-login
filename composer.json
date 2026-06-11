@@ -15,6 +15,11 @@
             "homepage": "https://mageaustralia.com.au"
         }
     ],
+    "autoload": {
+        "files": [
+            "lib/MahoCLI/Commands/SocialLoginPromoteAddressMobiles.php"
+        ]
+    },
     "extra": {
         "maho-module-dir": "app/code/community/MageAustralia/SocialLogin"
     }

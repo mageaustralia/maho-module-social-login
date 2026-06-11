@@ -309,4 +309,74 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
         // Generic E.164: + followed by 8-15 digits, first digit not 0.
         return (bool) preg_match('/^\+[1-9]\d{7,14}$/', $mobile);
     }
+
+    /**
+     * Find the best candidate mobile number from a customer's address book.
+     * Walks all addresses, normalises each telephone, returns the first one that
+     * passes mobileIsValid() for the default country. Prefers the default billing
+     * address; ties broken by highest address entity_id (most recent).
+     *
+     * Used by the OTP delivery fallback and the address-mobile promotion paths
+     * (CLI + admin button) when a customer has no mobile/mobile_verified on file
+     * but a usable mobile is sitting on their address.
+     */
+    public function findValidMobileFromAddresses(Mage_Customer_Model_Customer $customer): ?string
+    {
+        $country = $this->getDefaultMobileCountry();
+        $candidates = [];
+        /** @var Mage_Customer_Model_Address $address */
+        foreach ($customer->getAddresses() as $address) {
+            $phone = (string) $address->getTelephone();
+            if ($phone === '') {
+                continue;
+            }
+            $normalised = $this->normaliseMobile($phone, $country);
+            if (!$this->mobileIsValid($normalised, $country)) {
+                continue;
+            }
+            $candidates[] = [
+                'addr_id'            => (int) $address->getId(),
+                'mobile'             => $normalised,
+                'is_default_billing' => (int) (bool) $address->getIsDefaultBilling(),
+            ];
+        }
+        if ($candidates === []) {
+            return null;
+        }
+        usort($candidates, function (array $a, array $b): int {
+            return ($b['is_default_billing'] <=> $a['is_default_billing'])
+                ?: ($b['addr_id'] <=> $a['addr_id']);
+        });
+        return $candidates[0]['mobile'];
+    }
+
+    /**
+     * Pre-approve a mobile by copying the best valid candidate from the customer's
+     * address book onto their customer record (mobile + mobile_verified=NOW()).
+     *
+     * Idempotent: no-op when the customer already has mobile_verified set, so it's
+     * safe to run repeatedly from the CLI sweep, the admin button, or future jobs.
+     *
+     * Returns the mobile that was set (or already present), or null if nothing to do.
+     */
+    public function promoteAddressMobileToCustomer(int $customerId): ?string
+    {
+        /** @var Mage_Customer_Model_Customer $customer */
+        $customer = Mage::getModel('customer/customer')->load($customerId);
+        if (!$customer->getId()) {
+            return null;
+        }
+        if ($customer->getMobileVerified()) {
+            $existing = (string) $customer->getMobile();
+            return $existing !== '' ? $existing : null;
+        }
+        $mobile = $this->findValidMobileFromAddresses($customer);
+        if ($mobile === null) {
+            return null;
+        }
+        $customer->setMobile($mobile)
+            ->setMobileVerified(Mage_Core_Model_Locale::nowUtc())
+            ->save();
+        return $mobile;
+    }
 }
