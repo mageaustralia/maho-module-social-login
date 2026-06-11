@@ -1,12 +1,23 @@
 <?xml version="1.0"?>
 <config>
+    <tabs>
+        <mageaustralia translate="label" module="sociallogin">
+            <label>Mage Australia</label>
+            <sort_order>400</sort_order>
+        </mageaustralia>
+    </tabs>
     <sections>
-        <customer>
+        <sociallogin translate="label" module="sociallogin">
+            <label>Social Login</label>
+            <tab>mageaustralia</tab>
+            <sort_order>10</sort_order>
+            <show_in_default>1</show_in_default>
+            <show_in_website>1</show_in_website>
+            <show_in_store>1</show_in_store>
             <groups>
-                <sociallogin translate="label" module="sociallogin">
-                    <label>Social Login</label>
-                    <sort_order>50</sort_order>
-                    <frontend_type>text</frontend_type>
+                <oauth_providers translate="label" module="sociallogin">
+                    <label>OAuth providers</label>
+                    <sort_order>10</sort_order>
                     <show_in_default>1</show_in_default>
                     <show_in_website>1</show_in_website>
                     <show_in_store>1</show_in_store>
@@ -19,6 +30,7 @@
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <config_path>customer/sociallogin/google_enabled</config_path>
                         </google_enabled>
                         <google_client_id translate="label comment">
                             <label>Google Client ID</label>
@@ -31,6 +43,7 @@
                             <depends>
                                 <google_enabled>1</google_enabled>
                             </depends>
+                            <config_path>customer/sociallogin/google_client_id</config_path>
                         </google_client_id>
                         <apple_enabled translate="label">
                             <label>Apple Sign-In Enabled</label>
@@ -40,6 +53,7 @@
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <config_path>customer/sociallogin/apple_enabled</config_path>
                         </apple_enabled>
                         <apple_service_id translate="label comment">
                             <label>Apple Service ID</label>
@@ -52,6 +66,7 @@
                             <depends>
                                 <apple_enabled>1</apple_enabled>
                             </depends>
+                            <config_path>customer/sociallogin/apple_service_id</config_path>
                         </apple_service_id>
                         <facebook_enabled translate="label">
                             <label>Facebook Login Enabled</label>
@@ -61,6 +76,7 @@
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <config_path>customer/sociallogin/facebook_enabled</config_path>
                         </facebook_enabled>
                         <facebook_app_id translate="label comment">
                             <label>Facebook App ID</label>
@@ -73,6 +89,7 @@
                             <depends>
                                 <facebook_enabled>1</facebook_enabled>
                             </depends>
+                            <config_path>customer/sociallogin/facebook_app_id</config_path>
                         </facebook_app_id>
                         <facebook_app_secret translate="label comment">
                             <label>Facebook App Secret</label>
@@ -86,20 +103,123 @@
                             <depends>
                                 <facebook_enabled>1</facebook_enabled>
                             </depends>
+                            <config_path>customer/sociallogin/facebook_app_secret</config_path>
                         </facebook_app_secret>
+                    </fields>
+                </oauth_providers>
+                <otp_login translate="label" module="sociallogin">
+                    <label>SMS one-time-code login</label>
+                    <sort_order>20</sort_order>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>1</show_in_website>
+                    <show_in_store>1</show_in_store>
+                    <fields>
                         <otp_enabled translate="label">
                             <label>Enable SMS one-time-code login</label>
                             <frontend_type>select</frontend_type>
                             <source_model>adminhtml/system_config_source_yesno</source_model>
-                            <sort_order>80</sort_order>
+                            <sort_order>10</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
+                            <config_path>customer/sociallogin/otp_enabled</config_path>
                         </otp_enabled>
                         <otp_length translate="label">
                             <label>OTP code length</label>
                             <frontend_type>text</frontend_type>
                             <validate>validate-digits validate-greater-than-zero</validate>
+                            <sort_order>20</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
+                            <config_path>customer/sociallogin/otp_length</config_path>
+                        </otp_length>
+                        <otp_expiry_minutes translate="label">
+                            <label>OTP expiry (minutes)</label>
+                            <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <sort_order>30</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
+                            <config_path>customer/sociallogin/otp_expiry_minutes</config_path>
+                        </otp_expiry_minutes>
+                        <otp_max_attempts translate="label">
+                            <label>Max verify attempts per code</label>
+                            <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <sort_order>40</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
+                            <config_path>customer/sociallogin/otp_max_attempts</config_path>
+                        </otp_max_attempts>
+                        <otp_rl_identifier_count translate="label">
+                            <label>Rate limit: max requests per identifier</label>
+                            <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <sort_order>50</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
+                            <config_path>customer/sociallogin/otp_rl_identifier_count</config_path>
+                        </otp_rl_identifier_count>
+                        <otp_rl_identifier_window translate="label">
+                            <label>Rate limit: identifier window (seconds)</label>
+                            <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <sort_order>60</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
+                            <config_path>customer/sociallogin/otp_rl_identifier_window</config_path>
+                        </otp_rl_identifier_window>
+                        <otp_rl_ip_count translate="label">
+                            <label>Rate limit: max requests per IP</label>
+                            <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <sort_order>70</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
+                            <config_path>customer/sociallogin/otp_rl_ip_count</config_path>
+                        </otp_rl_ip_count>
+                        <otp_rl_ip_window translate="label">
+                            <label>Rate limit: IP window (seconds)</label>
+                            <frontend_type>text</frontend_type>
+                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <sort_order>80</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <otp_enabled>1</otp_enabled>
+                            </depends>
+                            <config_path>customer/sociallogin/otp_rl_ip_window</config_path>
+                        </otp_rl_ip_window>
+                        <otp_sms_enabled translate="label comment">
+                            <label>Enable SMS channel (Clickatell)</label>
+                            <comment>Gates the actual SMS send. When off, codes are generated but no SMS is delivered.</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
                             <sort_order>90</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
@@ -107,11 +227,13 @@
                             <depends>
                                 <otp_enabled>1</otp_enabled>
                             </depends>
-                        </otp_length>
-                        <otp_expiry_minutes translate="label">
-                            <label>OTP expiry (minutes)</label>
-                            <frontend_type>text</frontend_type>
-                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <config_path>customer/sociallogin/otp_sms_enabled</config_path>
+                        </otp_sms_enabled>
+                        <otp_default_country translate="label comment">
+                            <label>Default mobile country</label>
+                            <comment>Used when a user-entered mobile number has no + prefix. Lets buyers type "0400 123 456" instead of "+61 400 123 456".</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_country</source_model>
                             <sort_order>100</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
@@ -119,11 +241,12 @@
                             <depends>
                                 <otp_enabled>1</otp_enabled>
                             </depends>
-                        </otp_expiry_minutes>
-                        <otp_max_attempts translate="label">
-                            <label>Max verify attempts per code</label>
-                            <frontend_type>text</frontend_type>
-                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <config_path>customer/sociallogin/otp_default_country</config_path>
+                        </otp_default_country>
+                        <otp_sms_provider translate="label">
+                            <label>SMS provider</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>sociallogin/system_config_source_smsProvider</source_model>
                             <sort_order>110</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
@@ -131,35 +254,39 @@
                             <depends>
                                 <otp_enabled>1</otp_enabled>
                             </depends>
-                        </otp_max_attempts>
-                        <otp_rl_identifier_count translate="label">
-                            <label>Rate limit: max requests per identifier</label>
-                            <frontend_type>text</frontend_type>
-                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <config_path>customer/sociallogin/otp_sms_provider</config_path>
+                        </otp_sms_provider>
+                        <otp_clickatell_api_key translate="label comment">
+                            <label>Clickatell API Key</label>
+                            <comment>API key for the selected SMS provider (Clickatell).</comment>
+                            <frontend_type>obscure</frontend_type>
+                            <backend_model>adminhtml/system_config_backend_encrypted</backend_model>
                             <sort_order>120</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
                             <depends>
-                                <otp_enabled>1</otp_enabled>
+                                <otp_sms_enabled>1</otp_sms_enabled>
                             </depends>
-                        </otp_rl_identifier_count>
-                        <otp_rl_identifier_window translate="label">
-                            <label>Rate limit: identifier window (seconds)</label>
+                            <config_path>customer/sociallogin/otp_clickatell_api_key</config_path>
+                        </otp_clickatell_api_key>
+                        <otp_clickatell_sender translate="label">
+                            <label>Clickatell Sender ID</label>
                             <frontend_type>text</frontend_type>
-                            <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>130</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
                             <depends>
-                                <otp_enabled>1</otp_enabled>
+                                <otp_sms_enabled>1</otp_sms_enabled>
                             </depends>
-                        </otp_rl_identifier_window>
-                        <otp_rl_ip_count translate="label">
-                            <label>Rate limit: max requests per IP</label>
-                            <frontend_type>text</frontend_type>
-                            <validate>validate-digits validate-greater-than-zero</validate>
+                            <config_path>customer/sociallogin/otp_clickatell_sender</config_path>
+                        </otp_clickatell_sender>
+                        <otp_pepper translate="label comment">
+                            <label>OTP server pepper (secret)</label>
+                            <comment>Optional dedicated secret used to hash codes. If left blank the install crypt key is used. Changing this invalidates all codes currently in flight.</comment>
+                            <frontend_type>obscure</frontend_type>
+                            <backend_model>adminhtml/system_config_backend_encrypted</backend_model>
                             <sort_order>140</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
@@ -167,9 +294,10 @@
                             <depends>
                                 <otp_enabled>1</otp_enabled>
                             </depends>
-                        </otp_rl_ip_count>
-                        <otp_rl_ip_window translate="label">
-                            <label>Rate limit: IP window (seconds)</label>
+                            <config_path>customer/sociallogin/otp_pepper</config_path>
+                        </otp_pepper>
+                        <otp_resend_cooldown translate="label">
+                            <label>Resend cooldown (seconds, anti click-spam)</label>
                             <frontend_type>text</frontend_type>
                             <validate>validate-digits validate-greater-than-zero</validate>
                             <sort_order>150</sort_order>
@@ -179,97 +307,11 @@
                             <depends>
                                 <otp_enabled>1</otp_enabled>
                             </depends>
-                        </otp_rl_ip_window>
-                        <otp_sms_enabled translate="label comment">
-                            <label>Enable SMS channel (Clickatell)</label>
-                            <comment>Gates the actual SMS send. When off, codes are generated but no SMS is delivered.</comment>
-                            <frontend_type>select</frontend_type>
-                            <source_model>adminhtml/system_config_source_yesno</source_model>
-                            <sort_order>160</sort_order>
-                            <show_in_default>1</show_in_default>
-                            <show_in_website>1</show_in_website>
-                            <show_in_store>1</show_in_store>
-                            <depends>
-                                <otp_enabled>1</otp_enabled>
-                            </depends>
-                        </otp_sms_enabled>
-                        <otp_default_country translate="label comment">
-                            <label>Default mobile country</label>
-                            <comment>Used when a user-entered mobile number has no + prefix. Lets buyers type "0400 123 456" instead of "+61 400 123 456".</comment>
-                            <frontend_type>select</frontend_type>
-                            <source_model>adminhtml/system_config_source_country</source_model>
-                            <sort_order>165</sort_order>
-                            <show_in_default>1</show_in_default>
-                            <show_in_website>1</show_in_website>
-                            <show_in_store>1</show_in_store>
-                            <depends>
-                                <otp_enabled>1</otp_enabled>
-                            </depends>
-                        </otp_default_country>
-                        <otp_sms_provider translate="label">
-                            <label>SMS provider</label>
-                            <frontend_type>select</frontend_type>
-                            <source_model>sociallogin/system_config_source_smsProvider</source_model>
-                            <sort_order>195</sort_order>
-                            <show_in_default>1</show_in_default>
-                            <show_in_website>1</show_in_website>
-                            <show_in_store>1</show_in_store>
-                            <depends>
-                                <otp_enabled>1</otp_enabled>
-                            </depends>
-                        </otp_sms_provider>
-                        <otp_clickatell_api_key translate="label comment">
-                            <label>Clickatell API Key</label>
-                            <comment>API key for the selected SMS provider (Clickatell).</comment>
-                            <frontend_type>obscure</frontend_type>
-                            <backend_model>adminhtml/system_config_backend_encrypted</backend_model>
-                            <sort_order>170</sort_order>
-                            <show_in_default>1</show_in_default>
-                            <show_in_website>1</show_in_website>
-                            <show_in_store>1</show_in_store>
-                            <depends>
-                                <otp_sms_enabled>1</otp_sms_enabled>
-                            </depends>
-                        </otp_clickatell_api_key>
-                        <otp_clickatell_sender translate="label">
-                            <label>Clickatell Sender ID</label>
-                            <frontend_type>text</frontend_type>
-                            <sort_order>180</sort_order>
-                            <show_in_default>1</show_in_default>
-                            <show_in_website>1</show_in_website>
-                            <show_in_store>1</show_in_store>
-                            <depends>
-                                <otp_sms_enabled>1</otp_sms_enabled>
-                            </depends>
-                        </otp_clickatell_sender>
-                        <otp_pepper translate="label comment">
-                            <label>OTP server pepper (secret)</label>
-                            <comment>Optional dedicated secret used to hash codes. If left blank the install crypt key is used. Changing this invalidates all codes currently in flight.</comment>
-                            <frontend_type>obscure</frontend_type>
-                            <backend_model>adminhtml/system_config_backend_encrypted</backend_model>
-                            <sort_order>190</sort_order>
-                            <show_in_default>1</show_in_default>
-                            <show_in_website>1</show_in_website>
-                            <show_in_store>1</show_in_store>
-                            <depends>
-                                <otp_enabled>1</otp_enabled>
-                            </depends>
-                        </otp_pepper>
-                        <otp_resend_cooldown translate="label">
-                            <label>Resend cooldown (seconds, anti click-spam)</label>
-                            <frontend_type>text</frontend_type>
-                            <validate>validate-digits validate-greater-than-zero</validate>
-                            <sort_order>200</sort_order>
-                            <show_in_default>1</show_in_default>
-                            <show_in_website>1</show_in_website>
-                            <show_in_store>1</show_in_store>
-                            <depends>
-                                <otp_enabled>1</otp_enabled>
-                            </depends>
+                            <config_path>customer/sociallogin/otp_resend_cooldown</config_path>
                         </otp_resend_cooldown>
                     </fields>
-                </sociallogin>
+                </otp_login>
             </groups>
-        </customer>
+        </sociallogin>
     </sections>
 </config>
