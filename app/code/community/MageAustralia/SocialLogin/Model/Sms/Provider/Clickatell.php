@@ -15,14 +15,20 @@ class MageAustralia_SocialLogin_Model_Sms_Provider_Clickatell implements MageAus
         }
         try {
             $client = \Symfony\Component\HttpClient\HttpClient::create(['timeout' => 10]);
-            $response = $client->request('POST', 'https://platform.clickatell.com/v1/message', [
-                'headers' => ['Authorization' => $apiKey, 'Content-Type' => 'application/json', 'Accept' => 'application/json'],
-                'json' => ['messages' => [array_filter([
-                    'channel' => 'sms',
-                    'to'      => $to,
-                    'from'    => $sender !== '' ? $sender : null,
+            // Clickatell One API current endpoint is /messages (Bearer auth).
+            // The older /v1/message still responds but is deprecated.
+            $response = $client->request('POST', 'https://platform.clickatell.com/messages', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Content-Type'  => 'application/json',
+                    'Accept'        => 'application/json',
+                ],
+                'json' => array_filter([
                     'content' => $message,
-                ])]],
+                    'to'      => [$to],
+                    'from'    => $sender !== '' ? $sender : null,
+                    'charset' => 'UTF-8',
+                ], static fn($v) => $v !== null),
             ]);
             $status = $response->getStatusCode();
             $ok = $status >= 200 && $status < 300;
