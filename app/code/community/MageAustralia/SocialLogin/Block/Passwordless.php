@@ -22,7 +22,11 @@ class MageAustralia_SocialLogin_Block_Passwordless extends Mage_Core_Block_Templ
 
     public function isOtpEnabled(): bool
     {
-        return Mage::helper('sociallogin')->isOtpEnabled();
+        // OTP is only usable when both the engine is on AND at least one
+        // delivery channel is enabled. SMS (Clickatell) is the only channel
+        // currently shipped, so hide the OTP UI entirely when SMS is off.
+        $h = Mage::helper('sociallogin');
+        return $h->isOtpEnabled() && $h->isOtpSmsEnabled();
     }
 
     public function getOtpRequestUrl(): string
