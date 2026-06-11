@@ -37,6 +37,11 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
                 return;
             }
             $identifier = $helper->normaliseMobile((string) $this->getRequest()->getPost('mobile'));
+            // Reject malformed mobile up-front (input validation, not enumeration).
+            if (!$helper->mobileIsValid($identifier)) {
+                $this->_json(['ok' => false, 'message' => 'Please enter a valid mobile number.'], 400);
+                return;
+            }
         } else {
             $purpose = 'login';
             $identifier = $helper->normaliseEmail((string) $this->getRequest()->getPost('email'));
@@ -105,8 +110,14 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
             return;
         }
 
-        $mobile = Mage::helper('sociallogin')->normaliseMobile((string) $this->getRequest()->getPost('mobile', ''));
+        $helper = Mage::helper('sociallogin');
+        $mobile = $helper->normaliseMobile((string) $this->getRequest()->getPost('mobile', ''));
         $code   = (string) $this->getRequest()->getPost('code', '');
+
+        if (!$helper->mobileIsValid($mobile)) {
+            $this->_json(['ok' => false, 'message' => 'Please enter a valid mobile number.'], 400);
+            return;
+        }
 
         $res = Mage::helper('sociallogin/otp')->verifyCode($mobile, 'add_mobile', $code, $this->_storeId());
         if (empty($res['ok'])) {

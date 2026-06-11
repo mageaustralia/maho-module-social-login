@@ -212,12 +212,101 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
 
     public function normaliseEmail(string $email): string { return strtolower(trim($email)); }
 
-    public function normaliseMobile(string $mobile): string
+    /**
+     * Country code -> international dialling prefix. Used to expand national-format
+     * numbers (those starting with the country's national trunk-0) into E.164.
+     */
+    private const COUNTRY_DIALING = [
+        'AU' => '61',
+        'NZ' => '64',
+        'GB' => '44',
+        'IE' => '353',
+        'US' => '1',
+        'CA' => '1',
+        'SG' => '65',
+        'JP' => '81',
+        'IN' => '91',
+        'DE' => '49',
+        'FR' => '33',
+    ];
+
+    /**
+     * Country code -> mobile-number shape (after normalisation). Used by
+     * mobileIsValid() to reject numbers that pass normalisation but aren't real
+     * mobile numbers for the selected country (e.g. a typo'd extra digit, or an AU
+     * landline 02/03/07/08 misrouted into the SMS path).
+     */
+    private const MOBILE_PATTERNS = [
+        'AU' => '/^\+614\d{8}$/',          // +61 4xx xxx xxx
+        'NZ' => '/^\+642\d{7,9}$/',        // +64 2x... (8-10 digits after +64)
+        'GB' => '/^\+447\d{9}$/',          // +44 7xxx xxxxxx
+        'US' => '/^\+1\d{10}$/',
+        'CA' => '/^\+1\d{10}$/',
+        'SG' => '/^\+65[89]\d{7}$/',       // +65 8 or 9 + 7
+    ];
+
+    public function getDefaultMobileCountry(?int $storeId = null): string
     {
+        return strtoupper((string) Mage::getStoreConfig('customer/sociallogin/otp_default_country', $storeId)) ?: 'AU';
+    }
+
+    /**
+     * Normalise a user-typed mobile number to E.164 (+CCNNN...).
+     *
+     * Accepted input formats (for the configured default country, e.g. AU):
+     *   0400 123 456       -> +61400123456   (national trunk-0)
+     *   +61 400 123 456    -> +61400123456   (already E.164)
+     *   61400123456        -> +61400123456   (bare country code)
+     *   0061 400 123 456   -> +61400123456   (international access via 00)
+     *   (0400) 123-456     -> +61400123456   (formatting stripped)
+     *
+     * Does NOT validate that the result is a real mobile number — that's mobileIsValid().
+     */
+    public function normaliseMobile(string $mobile, ?string $country = null): string
+    {
+        $country = strtoupper($country ?: $this->getDefaultMobileCountry());
         $digits = preg_replace('/[^0-9+]/', '', trim($mobile));
-        if ($digits === null) { return ''; }
-        if (strpos($digits, '0') === 0) { $digits = '+61' . substr($digits, 1); } // AU default; adjust per locale
-        if (strpos($digits, '+') !== 0 && $digits !== '') { $digits = '+' . $digits; }
-        return $digits;
+        if (!is_string($digits) || $digits === '') {
+            return '';
+        }
+
+        // "00" international access prefix -> "+" (some keypads emit "0061..." instead of "+61...")
+        if (str_starts_with($digits, '00')) {
+            $digits = '+' . substr($digits, 2);
+        }
+
+        // Already E.164 — accept as-is.
+        if (str_starts_with($digits, '+')) {
+            return $digits;
+        }
+
+        $cc = self::COUNTRY_DIALING[$country] ?? null;
+
+        // National format with leading 0 (AU "0400...", UK "07..."): swap trunk-0 for country code.
+        if (str_starts_with($digits, '0')) {
+            return $cc !== null
+                ? '+' . $cc . substr($digits, 1)
+                : '+' . ltrim($digits, '0');
+        }
+
+        // Bare digits, no prefix — assume they already include the country code (e.g. "61400...").
+        return '+' . $digits;
+    }
+
+    /**
+     * True if $mobile is a valid mobile number in E.164 form for the given country.
+     * Falls back to a generic E.164 length check for countries without a specific pattern.
+     */
+    public function mobileIsValid(string $mobile, ?string $country = null): bool
+    {
+        if ($mobile === '' || !str_starts_with($mobile, '+')) {
+            return false;
+        }
+        $country = strtoupper($country ?: $this->getDefaultMobileCountry());
+        if (isset(self::MOBILE_PATTERNS[$country])) {
+            return (bool) preg_match(self::MOBILE_PATTERNS[$country], $mobile);
+        }
+        // Generic E.164: + followed by 8-15 digits, first digit not 0.
+        return (bool) preg_match('/^\+[1-9]\d{7,14}$/', $mobile);
     }
 }
