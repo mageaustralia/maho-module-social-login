@@ -27,7 +27,20 @@ class MageAustralia_SocialLogin_Model_Sms_Provider_Clickatell implements MageAus
             $status = $response->getStatusCode();
             $ok = $status >= 200 && $status < 300;
             if (!$ok) {
-                Mage::log('otp sms clickatell non-2xx (' . $status . ') for ' . $to, Mage::LOG_ERR, 'sociallogin_otp.log');
+                // Capture the response body so the operator can see Clickatell's verbose
+                // reason (e.g. "Invalid or missing integration API Key", "Sender ID not
+                // approved") instead of just the bare HTTP status.
+                $body = '';
+                try {
+                    $body = (string) $response->getContent(false);
+                } catch (\Throwable) {
+                    // ignore
+                }
+                Mage::log(
+                    sprintf('otp sms clickatell non-2xx (%d) for %s :: %s', $status, $to, $body),
+                    Mage::LOG_ERR,
+                    'sociallogin_otp.log',
+                );
             }
             return $ok;
         } catch (\Throwable $e) {
