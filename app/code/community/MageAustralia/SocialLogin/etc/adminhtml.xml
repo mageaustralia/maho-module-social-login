@@ -12,6 +12,17 @@
                             </sociallogin_promote_mobile>
                         </children>
                     </customer>
+                    <system>
+                        <children>
+                            <config>
+                                <children>
+                                    <sociallogin translate="title" module="sociallogin">
+                                        <title>Social Login</title>
+                                    </sociallogin>
+                                </children>
+                            </config>
+                        </children>
+                    </system>
                 </children>
             </admin>
         </resources>
