@@ -89,6 +89,27 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
             return;
         }
 
+        // Merge any guest cart with the customer's previously-saved quote.
+        // loginById() dispatches `customer_login` which
+        // Mage_Checkout_Model_Observer listens for at `area: frontend` and
+        // delegates to $checkoutSession->loadCustomerQuote() — but the
+        // area-routed observer doesn't reliably fire on AJAX controllers
+        // handled outside the standard frontend dispatcher. The customer
+        // ends up with a NEW empty quote AND their previously-saved quote
+        // stays orphaned (is_active=1 but no longer the session quote)
+        // — visible to the user as "cart badge says N but the cart is
+        // empty after I logged in".
+        //
+        // The explicit call is idempotent: a no-op when the observer
+        // already ran, the right merge when it didn't. Wrapped in try/catch
+        // so a cart-merge failure doesn't break the login itself; the
+        // customer is logged in either way.
+        try {
+            Mage::getSingleton('checkout/session')->loadCustomerQuote();
+        } catch (\Throwable $e) {
+            Mage::logException($e);
+        }
+
         $this->_json(['ok' => true, 'redirect' => $this->_resolveRedirect()]);
     }
 
