@@ -92,6 +92,14 @@ class SocialAuthProcessor implements ProcessorInterface
         if (!$guestCart->getId() || !$guestCart->getIsActive() || !$guestCart->getItemsCount()) {
             return ['maskedId' => null, 'qty' => 0];
         }
+        // Only adopt a genuine guest cart from the current store. Without this a
+        // leaked/guessed masked id could merge another customer's (or another
+        // store's) cart into the authenticating customer's cart.
+        if ($guestCart->getCustomerId()
+            || (int) $guestCart->getStoreId() !== (int) \Mage::app()->getStore()->getId()
+        ) {
+            return ['maskedId' => null, 'qty' => 0];
+        }
 
         /** @var \Mage_Sales_Model_Quote $customerCart */
         $customerCart = \Mage::getModel('sales/quote');
