@@ -114,11 +114,12 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
     }
 
     /**
-     * POST /sociallogin/otp/add-mobile
+     * POST /sociallogin/otp/addMobile (legacy alias: /sociallogin/otp/add-mobile)
      * Verify an 'add_mobile' code for the logged-in customer and store the verified
      * mobile number against their account.
      */
-    #[\Maho\Config\Route('/sociallogin/otp/add-mobile', name: 'sociallogin.otp.add_mobile')]
+    #[\Maho\Config\Route('/sociallogin/otp/addMobile', name: 'sociallogin.otp.add_mobile')]
+    #[\Maho\Config\Route('/sociallogin/otp/add-mobile', name: 'sociallogin.otp.add_mobile_legacy')]
     public function addMobileAction(): void
     {
         if (($guard = $this->_guard()) !== null) {

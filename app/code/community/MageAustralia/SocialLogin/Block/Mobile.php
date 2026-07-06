@@ -28,7 +28,7 @@ class MageAustralia_SocialLogin_Block_Mobile extends Mage_Core_Block_Template
 
     public function getVerifyUrl(): string
     {
-        return $this->getUrl('sociallogin/otp/add-mobile');
+        return $this->getUrl('sociallogin/otp/addMobile');
     }
 
     public function getFormKey(): string

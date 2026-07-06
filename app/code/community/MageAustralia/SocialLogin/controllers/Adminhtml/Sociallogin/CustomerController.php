@@ -7,6 +7,8 @@
 
 declare(strict_types=1);
 
+use Maho\Config\Route;
+
 /**
  * Admin actions on a single customer related to SocialLogin/OTP.
  *
@@ -28,6 +30,7 @@ class MageAustralia_SocialLogin_Adminhtml_Sociallogin_CustomerController extends
         return $this;
     }
 
+    #[Route('/admin/sociallogin_customer/promoteMobile', methods: ['GET', 'POST'])]
     public function promoteMobileAction(): void
     {
         $customerId = (int) $this->getRequest()->getParam('id');
