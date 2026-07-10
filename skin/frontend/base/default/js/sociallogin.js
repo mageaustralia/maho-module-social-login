@@ -7,9 +7,28 @@ var MahoSocialLogin = (function() {
     var container, loginUrl;
     var pendingProvider = null, pendingToken = null;
 
+    // init() must be idempotent. Themes that run Turbo re-dispatch DOMContentLoaded
+    // after a page swap so legacy scripts re-bind, which means init() is called
+    // again against the same document. Without these guards each dispatch injected
+    // another Google Identity script and called google.accounts.id.initialize()
+    // afresh; the second initialize opened the account-picker iframe, which takes
+    // focus. On mobile that stole focus from the search field and the keyboard
+    // never opened.
+    //
+    // The container node is the identity: a real Turbo swap replaces it, so we
+    // re-bind against the new node, while a bare re-dispatch is a no-op. The SDKs
+    // are global and only ever loaded once per document.
+    var boundContainer = null;
+    var googleSdkRequested = false;
+    var appleSdkRequested = false;
+    var facebookSdkRequested = false;
+
     function init() {
-        container = document.getElementById('social-login-buttons');
-        if (!container) return;
+        var el = document.getElementById('social-login-buttons');
+        if (!el || el === boundContainer) return;
+
+        container = el;
+        boundContainer = el;
         loginUrl = container.dataset.loginUrl;
 
         if (container.dataset.googleClientId) loadGoogleSdk();
@@ -78,6 +97,17 @@ var MahoSocialLogin = (function() {
     // ---- SDK Loaders ----
 
     function loadGoogleSdk() {
+        // Already loaded: the container is new (Turbo swap) but google.accounts.id
+        // is initialised. Re-render the button into the new node and stop. Calling
+        // initialize() or prompt() again would re-open the One Tap account picker.
+        if (window.google && google.accounts && google.accounts.id) {
+            renderGoogleButton();
+            return;
+        }
+        // Requested but still downloading: the in-flight script's onload will render.
+        if (googleSdkRequested) return;
+        googleSdkRequested = true;
+
         var script = document.createElement('script');
         script.src = 'https://accounts.google.com/gsi/client';
         script.async = true;
@@ -121,6 +151,12 @@ var MahoSocialLogin = (function() {
     // Minimal config (no `text`) so GSI shows the personalised "Sign in as <name>"
     // button when the visitor has a Google session. Clears first so re-renders
     // (after the container becomes visible) don't stack two buttons.
+    /** Phone-sized viewport. Matches the theme's own mobile breakpoint. */
+    function isSmallViewport() {
+        if (window.matchMedia) return window.matchMedia('(max-width: 767px)').matches;
+        return (window.innerWidth || document.documentElement.clientWidth || 0) <= 767;
+    }
+
     function renderGoogleButton() {
         var target = document.getElementById('social-login-google-button');
         if (!target || !window.google || !google.accounts || !google.accounts.id) return;
@@ -131,6 +167,18 @@ var MahoSocialLogin = (function() {
 
     function maybePromptOneTap() {
         if (!window.google || !google.accounts || !google.accounts.id) return;
+
+        // Never auto-prompt on a phone. One Tap renders as a bottom sheet whose
+        // account-picker iframe takes focus as soon as it appears. On a narrow
+        // viewport that competes with whatever the visitor just tapped: opening the
+        // header search drawer focuses the search field, One Tap lands a beat later,
+        // steals the focus, and the on-screen keyboard never opens.
+        //
+        // The rendered Google button is unaffected, and an explicit tap on it still
+        // calls prompt() through loginGoogle(). This only removes the uninvited
+        // prompt, which Google itself discourages on mobile.
+        if (isSmallViewport()) return;
+
         var path = window.location.pathname || '';
         var onCheckout = /\/checkout(\/|$)/.test(path) || /\/onestepcheckout/.test(path);
         var dismissed = false;
@@ -152,6 +200,9 @@ var MahoSocialLogin = (function() {
     }
 
     function loadAppleSdk() {
+        if (appleSdkRequested || window.AppleID) return;
+        appleSdkRequested = true;
+
         var script = document.createElement('script');
         script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
         script.async = true;
@@ -160,6 +211,9 @@ var MahoSocialLogin = (function() {
     }
 
     function loadFacebookSdk() {
+        if (facebookSdkRequested || window.FB || document.getElementById('facebook-jssdk')) return;
+        facebookSdkRequested = true;
+
         window.fbAsyncInit = function() {
             FB.init({ appId: container.dataset.facebookAppId, cookie: true, xfbml: false, version: 'v19.0' });
         };
