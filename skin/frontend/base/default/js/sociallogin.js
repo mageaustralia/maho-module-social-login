@@ -31,9 +31,12 @@ var MahoSocialLogin = (function() {
         boundContainer = el;
         loginUrl = container.dataset.loginUrl;
 
-        if (container.dataset.googleClientId) loadGoogleSdk();
-        if (container.dataset.appleServiceId) loadAppleSdk();
-        if (container.dataset.facebookAppId) loadFacebookSdk();
+        // Auth SDKs (Google GSI ~98KB, Apple, Facebook) are deferred off the critical
+        // path — see scheduleSocialSdks(). First load is on first interaction or when idle.
+        // On a Turbo re-init the SDKs already exist, so (re-)render into the new container
+        // immediately instead of deferring (else the Google button would be missing).
+        if (socialSdksLoaded) loadSocialSdksNow();
+        else scheduleSocialSdks();
 
         initForgotPassword();
 
@@ -96,6 +99,37 @@ var MahoSocialLogin = (function() {
 
     // ---- SDK Loaders ----
 
+    // ---- Deferred SDK loading ----
+    // Google (GSI ~98KB), Apple and Facebook auth SDKs are needed only for the social
+    // buttons + One Tap prompt — none of it is render-critical. Loading them on
+    // DOMContentLoaded put ~100KB of third-party JS on the critical path of every page.
+    // Instead load on the first user interaction (they may be about to sign in) OR when
+    // the browser goes idle (so One Tap still auto-prompts) — whichever comes first. The
+    // per-SDK requested-flags keep this idempotent under Turbo re-inits.
+    var socialSdksLoaded = false;
+    function loadSocialSdksNow() {
+        if (!container) return;
+        if (container.dataset.googleClientId) loadGoogleSdk();
+        if (container.dataset.appleServiceId) loadAppleSdk();
+        if (container.dataset.facebookAppId) loadFacebookSdk();
+    }
+    function loadSocialSdks() {
+        if (socialSdksLoaded) return;
+        socialSdksLoaded = true;
+        loadSocialSdksNow();
+    }
+    function scheduleSocialSdks() {
+        var fire = function() { loadSocialSdks(); };
+        ['pointerdown', 'keydown', 'touchstart'].forEach(function(ev) {
+            window.addEventListener(ev, fire, { once: true, passive: true });
+        });
+        if (window.requestIdleCallback) {
+            requestIdleCallback(fire, { timeout: 2000 });
+        } else {
+            setTimeout(fire, 1200);
+        }
+    }
+
     function loadGoogleSdk() {
         // Already loaded: the container is new (Turbo swap) but google.accounts.id
         // is initialised. Re-render the button into the new node and stop. Calling
@@ -123,23 +157,9 @@ var MahoSocialLogin = (function() {
                 auto_select: false
             });
 
-            // Render the native GSI button. When it lives in a hidden container
-            // (e.g. the header account dropdown) GSI bakes in a 0 width, so
-            // re-render once the container first becomes visible.
+            // Render the native GSI button. renderGoogleButton() self-observes if
+            // the container is hidden (0 width) and re-renders once it is shown.
             renderGoogleButton();
-            var gTarget = document.getElementById('social-login-google-button');
-            if (gTarget && gTarget.offsetWidth === 0 && 'ResizeObserver' in window) {
-                var ro = new ResizeObserver(function(entries) {
-                    for (var i = 0; i < entries.length; i++) {
-                        if (entries[i].contentRect.width > 0) {
-                            renderGoogleButton();
-                            ro.disconnect();
-                            return;
-                        }
-                    }
-                });
-                ro.observe(gTarget);
-            }
 
             // One Tap auto-prompt — gated: shows on every page until the user
             // dismisses it, then stays hidden until they reach cart/checkout.
@@ -163,6 +183,28 @@ var MahoSocialLogin = (function() {
         var width = Math.max(200, Math.min(target.offsetWidth || 360, 400));
         target.innerHTML = '';
         google.accounts.id.renderButton(target, { theme: 'outline', size: 'large', width: width });
+
+        // If rendered while hidden (offsetWidth 0 -> 360px fallback), the button
+        // can overflow a narrow container. Re-render once the container first
+        // becomes visible so the width is measured against the real (padded)
+        // dropdown. Both callers — first SDK load AND the "already loaded"
+        // re-render after a hole-punch/Turbo swap — go through here, so the
+        // re-init path (dropdown still hidden) now also self-corrects. Guard so
+        // each node is observed only once.
+        if (target.offsetWidth === 0 && 'ResizeObserver' in window && !target._gsiObserved) {
+            target._gsiObserved = true;
+            var ro = new ResizeObserver(function(entries) {
+                for (var i = 0; i < entries.length; i++) {
+                    if (entries[i].contentRect.width > 0) {
+                        target._gsiObserved = false;
+                        ro.disconnect();
+                        renderGoogleButton();
+                        return;
+                    }
+                }
+            });
+            ro.observe(target);
+        }
     }
 
     function maybePromptOneTap() {
@@ -365,10 +407,10 @@ var MahoSocialLogin = (function() {
         if (password) body.set('password', password);
         var fk = document.querySelector('input[name="form_key"]');
         if (fk) body.set('form_key', fk.value);
-        // On checkout, return the customer to checkout after sign-in / linking
-        // instead of the account dashboard. Other pages keep the default.
+        // Return the customer to the page they were on after sign-in / linking,
+        // instead of the account dashboard -- except on the auth pages themselves.
         var path = window.location.pathname || '';
-        if (/\/(firecheckout|checkout|onestepcheckout)(\/|$)/.test(path)) {
+        if (path && !/\/customer\/account\/(login|create|logout|forgotpassword)/i.test(path)) {
             body.set('redirect', path + (window.location.search || ''));
         }
 
@@ -459,5 +501,5 @@ var MahoSocialLogin = (function() {
         init();
     }
 
-    return { login: login, linkAccount: linkAccount };
+    return { login: login, linkAccount: linkAccount, init: init };
 })();

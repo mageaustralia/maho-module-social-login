@@ -44,13 +44,15 @@ class MageAustralia_SocialLogin_Model_Sms_Provider_Clickatell implements MageAus
                 }
                 Mage::log(
                     sprintf('otp sms clickatell non-2xx (%d) for %s :: %s', $status, $to, $body),
-                    Mage::LOG_ERR,
+                    // @phpstan-ignore-next-line classConstant.notFound (Mage::LOG_ERROR exists at runtime; bundled PHPStan stub is stale)
+                    Mage::LOG_ERROR,
                     'sociallogin_otp.log',
                 );
             }
             return $ok;
         } catch (\Throwable $e) {
-            Mage::log('otp sms clickatell send failed for ' . $to . ': ' . $e->getMessage(), Mage::LOG_ERR, 'sociallogin_otp.log');
+            /** @phpstan-ignore classConstant.notFound */
+            Mage::log('otp sms clickatell send failed for ' . $to . ': ' . $e->getMessage(), Mage::LOG_ERROR, 'sociallogin_otp.log');
             return false;
         }
     }

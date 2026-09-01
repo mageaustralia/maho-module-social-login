@@ -11,6 +11,7 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
     public const XPATH_FACEBOOK_ENABLED   = 'customer/sociallogin/facebook_enabled';
     public const XPATH_FACEBOOK_APP_ID    = 'customer/sociallogin/facebook_app_id';
     public const XPATH_FACEBOOK_APP_SECRET = 'customer/sociallogin/facebook_app_secret';
+    public const XPATH_AUTO_LINK_EXISTING = 'customer/sociallogin/auto_link_existing';
 
     public function isGoogleEnabled(?int $storeId = null): bool
     {
@@ -81,6 +82,17 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
      * @return array{customer?: Mage_Customer_Model_Customer, isNew?: bool, linkRequired?: bool, email?: string}
      * @throws Mage_Core_Exception on invalid input / token / link failure
      */
+    /**
+     * When enabled, a social sign-in whose provider-verified email matches an
+     * existing customer is linked and signed in WITHOUT a password prompt
+     * (trusting the provider's verified email). Disabled by default — the
+     * customer must enter their password to link the social identity.
+     */
+    public function isAutoLinkExistingEnabled(?int $storeId = null): bool
+    {
+        return (bool) Mage::getStoreConfigFlag(self::XPATH_AUTO_LINK_EXISTING, $storeId);
+    }
+
     public function authenticate(string $provider, string $token, ?string $password = null): array
     {
         if (!in_array($provider, self::SUPPORTED_PROVIDERS, true)) {
@@ -124,14 +136,23 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
         $customer->setWebsiteId(Mage::app()->getStore()->getWebsiteId());
         $customer->loadByEmail($email);
         if ($customer->getId()) {
-            if ($password === null || $password === '') {
-                return ['linkRequired' => true, 'email' => $this->maskEmail($email)];
-            }
-            if (!$customer->validatePassword($password)) {
-                throw Mage::exception('Mage_Core', $this->__('Incorrect password.'));
+            // Auto-link (admin opt-in): trust the provider's verified email and
+            // link + sign in without a password. Guarded on the provider's
+            // email_verified claim when it is present (Google/Apple set it);
+            // if absent, the cryptographically verified token is relied upon.
+            $autoLink = $this->isAutoLinkExistingEnabled()
+                && ($claims['email_verified'] ?? true);
+            if (!$autoLink) {
+                if ($password === null || $password === '') {
+                    return ['linkRequired' => true, 'email' => $this->maskEmail($email)];
+                }
+                if (!$customer->validatePassword($password)) {
+                    throw Mage::exception('Mage_Core', $this->__('Incorrect password.'));
+                }
             }
             $this->createSocialLink((int) $customer->getId(), $provider, $providerId, $email);
-            Mage::log("Social link created (password verified): {$provider} -> customer #{$customer->getId()}", null, 'social_login.log');
+            $linkMode = $autoLink ? 'auto-linked verified email' : 'password verified';
+            Mage::log("Social link created ({$linkMode}): {$provider} -> customer #{$customer->getId()}", null, 'social_login.log');
             return ['customer' => $customer, 'isNew' => false];
         }
 
@@ -163,7 +184,6 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
 
     public function createCustomer(array $claims): Mage_Customer_Model_Customer
     {
-        /** @var Mage_Customer_Model_Customer $customer */
         $customer = Mage::getModel('customer/customer');
         $store = Mage::app()->getStore();
         $customer->setWebsiteId($store->getWebsiteId());
@@ -185,16 +205,37 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
         return $masked . '@' . $domain;
     }
 
-    public function isOtpEnabled(?int $storeId = null): bool { return (bool) Mage::getStoreConfig('customer/sociallogin/otp_enabled', $storeId); }
-    public function isOtpSmsEnabled(?int $storeId = null): bool { return (bool) Mage::getStoreConfig('customer/sociallogin/otp_sms_enabled', $storeId); }
-    public function getOtpLength(?int $storeId = null): int { return max(4, min(10, (int) Mage::getStoreConfig('customer/sociallogin/otp_length', $storeId))); }
-    public function getOtpExpiryMinutes(?int $storeId = null): int { return max(1, min(10, (int) Mage::getStoreConfig('customer/sociallogin/otp_expiry_minutes', $storeId))); }
-    public function getOtpMaxAttempts(?int $storeId = null): int { return max(1, (int) Mage::getStoreConfig('customer/sociallogin/otp_max_attempts', $storeId)); }
+    public function isOtpEnabled(?int $storeId = null): bool
+    {
+        return (bool) Mage::getStoreConfig('customer/sociallogin/otp_enabled', $storeId);
+    }
+    public function isOtpSmsEnabled(?int $storeId = null): bool
+    {
+        return (bool) Mage::getStoreConfig('customer/sociallogin/otp_sms_enabled', $storeId);
+    }
+    public function getOtpLength(?int $storeId = null): int
+    {
+        return max(4, min(10, (int) Mage::getStoreConfig('customer/sociallogin/otp_length', $storeId)));
+    }
+    public function getOtpExpiryMinutes(?int $storeId = null): int
+    {
+        return max(1, min(10, (int) Mage::getStoreConfig('customer/sociallogin/otp_expiry_minutes', $storeId)));
+    }
+    public function getOtpMaxAttempts(?int $storeId = null): int
+    {
+        return max(1, (int) Mage::getStoreConfig('customer/sociallogin/otp_max_attempts', $storeId));
+    }
 
     // otp_clickatell_api_key and otp_pepper carry backend_model encrypted on their <default> nodes,
     // so getStoreConfig AUTO-DECRYPTS them. Do NOT decrypt() again (would double-decrypt to empty).
-    public function getClickatellApiKey(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_clickatell_api_key', $storeId); }
-    public function getClickatellSender(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_clickatell_sender', $storeId); }
+    public function getClickatellApiKey(?int $storeId = null): string
+    {
+        return (string) Mage::getStoreConfig('customer/sociallogin/otp_clickatell_api_key', $storeId);
+    }
+    public function getClickatellSender(?int $storeId = null): string
+    {
+        return (string) Mage::getStoreConfig('customer/sociallogin/otp_clickatell_sender', $storeId);
+    }
     public function getOtpPepper(?int $storeId = null): string
     {
         // Encrypted backend_model config auto-decrypts on read (do NOT decrypt() again).
@@ -207,10 +248,19 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
         return $pepper;
     }
 
-    public function getSmsProvider(?int $storeId = null): string { return (string) Mage::getStoreConfig('customer/sociallogin/otp_sms_provider', $storeId) ?: 'clickatell'; }
-    public function getOtpResendCooldown(?int $storeId = null): int { return max(0, (int) Mage::getStoreConfig('customer/sociallogin/otp_resend_cooldown', $storeId)); }
+    public function getSmsProvider(?int $storeId = null): string
+    {
+        return (string) Mage::getStoreConfig('customer/sociallogin/otp_sms_provider', $storeId) ?: 'clickatell';
+    }
+    public function getOtpResendCooldown(?int $storeId = null): int
+    {
+        return max(0, (int) Mage::getStoreConfig('customer/sociallogin/otp_resend_cooldown', $storeId));
+    }
 
-    public function normaliseEmail(string $email): string { return strtolower(trim($email)); }
+    public function normaliseEmail(string $email): string
+    {
+        return strtolower(trim($email));
+    }
 
     /**
      * Country code -> international dialling prefix. Used to expand national-format
@@ -361,7 +411,6 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function promoteAddressMobileToCustomer(int $customerId): ?string
     {
-        /** @var Mage_Customer_Model_Customer $customer */
         $customer = Mage::getModel('customer/customer')->load($customerId);
         if (!$customer->getId()) {
             return null;

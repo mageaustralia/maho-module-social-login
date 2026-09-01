@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+/** @var Mage_Core_Model_Resource_Setup $this */
 /** @var Mage_Core_Model_Resource_Setup $installer */
 $installer = $this;
 $installer->startSetup();
@@ -29,7 +30,7 @@ if (!$connection->isTableExists($table)) {
 }
 
 /** @var Mage_Customer_Model_Resource_Setup $customerSetup */
-$customerSetup = Mage::getResourceModel('customer/setup', 'core_setup');
+$customerSetup = Mage::getResourceModel('customer/setup', ['core_setup']);
 if (!$customerSetup->getAttribute('customer', 'mobile')) {
     $customerSetup->addAttribute('customer', 'mobile', [
         'type' => 'varchar', 'label' => 'Mobile', 'input' => 'text',

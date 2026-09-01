@@ -183,12 +183,16 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
         $byId = Mage::getModel('sociallogin/otp')->getCollection()
             ->addFieldToFilter('identifier', $identifier)
             ->addFieldToFilter('created_at', ['gteq' => $since($idWindow)])->getSize();
-        if ($byId >= $idCount) { return true; }
+        if ($byId >= $idCount) {
+            return true;
+        }
         if ($ip !== null && $ip !== '') {
             $byIp = Mage::getModel('sociallogin/otp')->getCollection()
                 ->addFieldToFilter('request_ip', $ip)
                 ->addFieldToFilter('created_at', ['gteq' => $since($ipWindow)])->getSize();
-            if ($byIp >= $ipCount) { return true; }
+            if ($byIp >= $ipCount) {
+                return true;
+            }
         }
         return false;
     }

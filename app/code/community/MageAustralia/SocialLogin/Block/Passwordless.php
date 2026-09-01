@@ -39,6 +39,7 @@ class MageAustralia_SocialLogin_Block_Passwordless extends Mage_Core_Block_Templ
         return $this->getUrl('sociallogin/otp/verify');
     }
 
+    #[\Override]
     public function getFormKey(): string
     {
         return Mage::getSingleton('core/session')->getFormKey();
