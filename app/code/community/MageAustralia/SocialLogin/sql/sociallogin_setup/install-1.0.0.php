@@ -14,7 +14,7 @@ if (!$connection->isTableExists($tableName)) {
         ->newTable($tableName)
         ->addColumn(
             'entity_id',
-            Varien_Db_Ddl_Table::TYPE_INTEGER,
+            Maho\Db\Ddl\Table::TYPE_INTEGER,
             null,
             [
                 'identity' => true,
@@ -26,7 +26,7 @@ if (!$connection->isTableExists($tableName)) {
         )
         ->addColumn(
             'customer_id',
-            Varien_Db_Ddl_Table::TYPE_INTEGER,
+            Maho\Db\Ddl\Table::TYPE_INTEGER,
             null,
             [
                 'unsigned' => true,
@@ -36,7 +36,7 @@ if (!$connection->isTableExists($tableName)) {
         )
         ->addColumn(
             'provider',
-            Varien_Db_Ddl_Table::TYPE_TEXT,
+            Maho\Db\Ddl\Table::TYPE_TEXT,
             32,
             [
                 'nullable' => false,
@@ -45,7 +45,7 @@ if (!$connection->isTableExists($tableName)) {
         )
         ->addColumn(
             'provider_id',
-            Varien_Db_Ddl_Table::TYPE_TEXT,
+            Maho\Db\Ddl\Table::TYPE_TEXT,
             255,
             [
                 'nullable' => false,
@@ -54,7 +54,7 @@ if (!$connection->isTableExists($tableName)) {
         )
         ->addColumn(
             'provider_email',
-            Varien_Db_Ddl_Table::TYPE_TEXT,
+            Maho\Db\Ddl\Table::TYPE_TEXT,
             255,
             [
                 'nullable' => true,
@@ -64,11 +64,11 @@ if (!$connection->isTableExists($tableName)) {
         )
         ->addColumn(
             'created_at',
-            Varien_Db_Ddl_Table::TYPE_TIMESTAMP,
+            Maho\Db\Ddl\Table::TYPE_TIMESTAMP,
             null,
             [
                 'nullable' => false,
-                'default'  => Varien_Db_Ddl_Table::TIMESTAMP_INIT,
+                'default'  => Maho\Db\Ddl\Table::TIMESTAMP_INIT,
             ],
             'Created At',
         )
@@ -86,7 +86,7 @@ if (!$connection->isTableExists($tableName)) {
             'customer_id',
             $installer->getTable('customer/entity'),
             'entity_id',
-            Varien_Db_Ddl_Table::ACTION_CASCADE,
+            Maho\Db\Ddl\Table::ACTION_CASCADE,
         )
         ->setComment('MageAustralia Social Login Identities');
 

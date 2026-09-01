@@ -8,7 +8,7 @@ class MageAustralia_SocialLogin_Model_Observer
      * Inject social login provider config into the store config DTO
      * so the headless storefront can render provider buttons.
      */
-    public function registerSocialLoginProviders(Varien_Event_Observer $observer): void
+    public function registerSocialLoginProviders(Maho\Event\Observer $observer): void
     {
         $dto = $observer->getEvent()->getDto();
         if (!property_exists($dto, 'extensions')) {
@@ -35,7 +35,7 @@ class MageAustralia_SocialLogin_Model_Observer
      * on the actual container (Mage_Adminhtml_Block_Customer_Edit) at the point
      * its button row is about to render.
      */
-    public function addPromoteMobileButton(Varien_Event_Observer $observer): void
+    public function addPromoteMobileButton(Maho\Event\Observer $observer): void
     {
         /** @var Mage_Adminhtml_Block_Widget_Container $container */
         $container = $observer->getEvent()->getBlock();

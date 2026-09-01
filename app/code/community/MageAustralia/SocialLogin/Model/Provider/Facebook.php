@@ -15,7 +15,13 @@ class MageAustralia_SocialLogin_Model_Provider_Facebook implements MageAustralia
     {
         $helper = Mage::helper('sociallogin');
         $appId = $helper->getFacebookAppId();
-        $appSecret = Mage::helper('core')->decrypt($helper->getFacebookAppSecret());
+        // facebook_app_secret carries backend_model="adminhtml/system_config_backend_encrypted"
+        // on its <default> node in config.xml, and Mage_Core_Model_Store::_processConfigValue()
+        // runs that backend model's afterLoad() — so getStoreConfig() has ALREADY decrypted it.
+        // Decrypting a second time returned an empty string, and Facebook login therefore
+        // always threw "not configured". Same trap the OTP keys carry a comment about in
+        // Helper/Data.php.
+        $appSecret = $helper->getFacebookAppSecret();
 
         if (empty($appId) || empty($appSecret)) {
             throw new \InvalidArgumentException('Facebook Login is not configured');
