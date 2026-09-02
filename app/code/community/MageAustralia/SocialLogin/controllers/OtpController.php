@@ -83,8 +83,22 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
             ->setWebsiteId($this->_websiteId())
             ->loadByEmail($email);
 
+        if (!$customer->getId()) {
+            $this->_json(['ok' => false, 'message' => 'Could not sign in.']);
+            return;
+        }
+
+        // A valid code is not on its own an entitlement to a session: apply the
+        // same confirmation / active gates a password login would hit.
+        try {
+            Mage::helper('sociallogin')->assertCustomerCanLogIn($customer);
+        } catch (Mage_Core_Exception $e) {
+            $this->_json(['ok' => false, 'message' => $e->getMessage()]);
+            return;
+        }
+
         $session = Mage::getSingleton('customer/session');
-        if (!$customer->getId() || !$session->loginById((int) $customer->getId())) {
+        if (!$session->loginById((int) $customer->getId())) {
             $this->_json(['ok' => false, 'message' => 'Could not sign in.']);
             return;
         }

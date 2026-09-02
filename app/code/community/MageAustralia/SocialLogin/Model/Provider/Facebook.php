@@ -31,12 +31,7 @@ class MageAustralia_SocialLogin_Model_Provider_Facebook implements MageAustralia
         $debugUrl = self::GRAPH_API_URL . '/debug_token?'
             . http_build_query(['input_token' => $accessToken, 'access_token' => $appId . '|' . $appSecret]);
 
-        $debugJson = file_get_contents($debugUrl);
-        if ($debugJson === false) {
-            throw new \RuntimeException('Failed to verify Facebook token');
-        }
-
-        $debug = json_decode($debugJson, true);
+        $debug = Mage::helper('sociallogin')->fetchJson($debugUrl);
         $debugData = $debug['data'] ?? [];
 
         if (empty($debugData['is_valid'])) {
@@ -63,13 +58,8 @@ class MageAustralia_SocialLogin_Model_Provider_Facebook implements MageAustralia
                 'access_token' => $accessToken,
             ]);
 
-        $profileJson = file_get_contents($profileUrl);
-        if ($profileJson === false) {
-            throw new \RuntimeException('Failed to fetch user profile from Facebook');
-        }
-
-        $profile = json_decode($profileJson, true);
-        if (!is_array($profile) || !empty($profile['error'])) {
+        $profile = Mage::helper('sociallogin')->fetchJson($profileUrl);
+        if (!empty($profile['error'])) {
             throw new \RuntimeException('Invalid Facebook profile response');
         }
 
