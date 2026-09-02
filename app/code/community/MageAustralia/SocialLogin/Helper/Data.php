@@ -124,6 +124,7 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
             if (!$customer->getId()) {
                 throw Mage::exception('Mage_Core', $this->__('Linked customer no longer exists.'));
             }
+            $this->assertCustomerCanLogIn($customer);
             return ['customer' => $customer, 'isNew' => false];
         }
 
@@ -136,6 +137,10 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
         $customer->setWebsiteId(Mage::app()->getStore()->getWebsiteId());
         $customer->loadByEmail($email);
         if ($customer->getId()) {
+            // Gate before linking, not just before returning: an unconfirmed or
+            // deactivated account must not gain a social identity either.
+            $this->assertCustomerCanLogIn($customer);
+
             // Auto-link (admin opt-in): trust the provider's verified email and
             // link + sign in without a password. Guarded on the provider's
             // email_verified claim when it is present (Google/Apple set it);
@@ -180,6 +185,105 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
             ->setProviderId($providerId)
             ->setProviderEmail($email)
             ->save();
+    }
+
+    /**
+     * Simple fixed-cap throttle backed by the cache.
+     *
+     * The OTP flow rate-limits by counting rows in maho_sociallogin_otp, which
+     * social auth cannot do -- it writes no rows. Without this the public
+     * sign-in paths were unthrottled: token-verification calls to Google/Apple/
+     * Facebook could be driven at will, and the password supplied to link an
+     * existing account could be guessed without limit.
+     *
+     * The TTL is refreshed on every hit, so a caller who keeps hammering stays
+     * locked out for the full window after their last attempt. That is the
+     * behaviour wanted for abuse; a legitimate user is never near the cap.
+     */
+    public function isThrottled(string $bucket, int $max, int $windowSeconds): bool
+    {
+        if ($max <= 0) {
+            return false;
+        }
+        try {
+            $cache = Mage::app()->getCache();
+            $key = 'sociallogin_rl_' . hash('sha256', $bucket);
+            $hits = (int) $cache->load($key);
+            if ($hits >= $max) {
+                return true;
+            }
+            $cache->save((string) ($hits + 1), $key, ['SOCIALLOGIN_RL'], $windowSeconds);
+        } catch (Exception $e) {
+            // A cache failure must not lock customers out of signing in.
+            Mage::logException($e);
+        }
+        return false;
+    }
+
+    /**
+     * GET a JSON document from a provider endpoint.
+     *
+     * Replaces file_get_contents(), which had no timeout at all: a provider
+     * that hung would hold the PHP worker until default_socket_timeout (60s by
+     * default), turning a provider outage into a site outage. It also returns
+     * false with a warning rather than raising, so failures read as "invalid
+     * response" instead of "provider unreachable".
+     *
+     * TransportException extends RuntimeException, so callers that already
+     * distinguish RuntimeException (provider unavailable) from
+     * InvalidArgumentException (bad token) keep working unchanged.
+     *
+     * @return array<mixed>
+     * @throws RuntimeException
+     */
+    public function fetchJson(string $url, int $timeout = 10): array
+    {
+        $client = \Symfony\Component\HttpClient\HttpClient::create([
+            'timeout'      => $timeout,
+            'max_duration' => $timeout,
+            'max_redirects' => 3,
+        ]);
+        $response = $client->request('GET', $url, ['headers' => ['Accept' => 'application/json']]);
+
+        $status = $response->getStatusCode();
+        if ($status < 200 || $status >= 300) {
+            throw new RuntimeException('Provider endpoint returned HTTP ' . $status);
+        }
+
+        $decoded = json_decode($response->getContent(false), true);
+        if (!is_array($decoded)) {
+            throw new RuntimeException('Provider returned an invalid JSON response');
+        }
+        return $decoded;
+    }
+
+    public function getRequestIp(): string
+    {
+        return (string) Mage::helper('core/http')->getRemoteAddr();
+    }
+
+    /**
+     * Re-apply the account gates that Mage_Customer_Model_Customer::authenticate()
+     * enforces.
+     *
+     * Social and OTP sign-in never reach authenticate() — there is no password to
+     * check — so without this an account core would refuse a password login for
+     * can still be signed into through a social provider or an emailed code.
+     *
+     * @throws Mage_Core_Exception
+     */
+    public function assertCustomerCanLogIn(Mage_Customer_Model_Customer $customer): void
+    {
+        if ($customer->getConfirmation() && $customer->isConfirmationRequired()) {
+            throw Mage::exception('Mage_Core', $this->__('This account is not confirmed. Please check your email.'));
+        }
+
+        // Core's authenticate() does not check this, but an admin who deactivates
+        // a customer expects every entry point closed, not just the password form.
+        // Guarded on hasData so a partially-loaded customer is not locked out.
+        if ($customer->hasData('is_active') && !$customer->getIsActive()) {
+            throw Mage::exception('Mage_Core', $this->__('This account is inactive.'));
+        }
     }
 
     public function createCustomer(array $claims): Mage_Customer_Model_Customer

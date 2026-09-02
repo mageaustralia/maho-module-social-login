@@ -69,15 +69,7 @@ class MageAustralia_SocialLogin_Model_Provider_Google implements MageAustralia_S
             return self::$cachedKeys;
         }
 
-        $json = file_get_contents(self::JWKS_URL);
-        if ($json === false) {
-            throw new \RuntimeException('Failed to fetch provider keys');
-        }
-
-        $jwks = json_decode($json, true);
-        if (!is_array($jwks)) {
-            throw new \RuntimeException('Invalid provider key response');
-        }
+        $jwks = \Mage::helper('sociallogin')->fetchJson(self::JWKS_URL);
 
         self::$cachedKeys = JWK::parseKeySet($jwks);
         self::$cacheExpires = time() + self::CACHE_TTL;

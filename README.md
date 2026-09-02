@@ -1,7 +1,7 @@
 # MageAustralia Social Login
 
 [![CI](https://github.com/mageaustralia/maho-module-social-login/actions/workflows/ci.yml/badge.svg)](https://github.com/mageaustralia/maho-module-social-login/actions/workflows/ci.yml)
-[![License: BSD-2-Clause](https://img.shields.io/badge/license-BSD--2--Clause-blue.svg)](LICENSE)
+[![License: OSL-3.0](https://img.shields.io/badge/license-OSL--3.0-blue.svg)](LICENSE)
 
 Social login for Maho — supports Google, Apple, and Facebook. Works with both the default Maho frontend and Maho Storefront (headless).
 
@@ -299,6 +299,7 @@ The SMS code flow is hardened, but a couple of residual limitations are document
 - **Enumeration-safe responses** - the request endpoint returns a uniform body whether or not an account (or verified mobile) exists, so the response never reveals account existence or throttling state.
 - **Pepper** - a dedicated `otp_pepper` is recommended. If it is left blank the install crypt key is used instead (codes are never hashed unsalted), but a distinct pepper is stronger because it isolates OTP hashing from every other use of the crypt key.
 - **Timing-based enumeration (residual)** - although the response body is uniform, a login request for an existing account with a verified mobile triggers synchronous code delivery, so response latency could still hint at whether such an account exists. This is inherent to delivering the code inline. A future enhancement could flush the response before delivery, or hand delivery to an async sender.
+- **Retention** - a nightly cron (`sociallogin_otp_cleanup`, 03:17) deletes rows older than 48 hours. The grace period is deliberate: the rate limiter counts recent rows per identifier and per IP, so purging too eagerly would blunt it.
 - **Multi-store scope (residual)** - OTP rows are not scoped by `store_id`; the current design assumes a single-website deployment. In a multi-website install that shares (or leaves blank) the pepper, a code could be valid across websites. This is a documented limitation; per-store scoping is a future enhancement.
 
 ## License

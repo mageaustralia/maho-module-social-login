@@ -19,8 +19,32 @@ class SocialAuthProcessor implements ProcessorInterface
     /**
      * @param SocialAuth $data
      */
+    /** Sign-in attempts allowed per IP per window on this public endpoint. */
+    private const RL_AUTH_MAX = 20;
+    private const RL_AUTH_WINDOW = 300;
+
+    /** Password attempts allowed per IP per window when linking an existing account. */
+    private const RL_LINK_MAX = 5;
+    private const RL_LINK_WINDOW = 900;
+
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): SocialAuth
     {
+        // This operation is security: "true", i.e. deliberately public. Throttle
+        // it: without this, provider token verification and the link-password
+        // check could both be driven without limit.
+        $helper = \Mage::helper('sociallogin');
+        $ip = $helper->getRequestIp();
+        $suppliedPassword = isset($data->password) && $data->password !== '';
+
+        if ($helper->isThrottled('api-auth:' . $ip, self::RL_AUTH_MAX, self::RL_AUTH_WINDOW)
+            || ($suppliedPassword && $helper->isThrottled('api-link:' . $ip, self::RL_LINK_MAX, self::RL_LINK_WINDOW))
+        ) {
+            throw new \Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException(
+                null,
+                'Too many attempts. Please wait a few minutes and try again.',
+            );
+        }
+
         try {
             $result = \Mage::helper('sociallogin')->authenticate(
                 (string) ($data->provider ?? ''),

@@ -26,6 +26,14 @@ class MageAustralia_SocialLogin_AuthController extends Mage_Core_Controller_Fron
      * create a customer session, and return JSON for the XHR client. This is
      * the storefront-independent path (no headless API / JWT round-trip).
      */
+    /** Sign-in attempts allowed per IP per window. */
+    private const RL_LOGIN_MAX = 20;
+    private const RL_LOGIN_WINDOW = 300;
+
+    /** Password attempts allowed per IP per window when linking an existing account. */
+    private const RL_LINK_MAX = 5;
+    private const RL_LINK_WINDOW = 900;
+
     #[\Maho\Config\Route('/sociallogin/auth/login', name: 'sociallogin.auth.login')]
     public function loginAction(): void
     {
@@ -47,6 +55,23 @@ class MageAustralia_SocialLogin_AuthController extends Mage_Core_Controller_Fron
         $token    = (string) $this->getRequest()->getPost('token');
         $password = $this->getRequest()->getPost('password');
         $password = ($password === null || $password === '') ? null : (string) $password;
+
+        $helper = Mage::helper('sociallogin');
+        $ip = $helper->getRequestIp();
+
+        if ($helper->isThrottled('login:' . $ip, self::RL_LOGIN_MAX, self::RL_LOGIN_WINDOW)) {
+            $this->_jsonError('Too many attempts. Please wait a few minutes and try again.', 429);
+            return;
+        }
+
+        // A supplied password means this is an attempt to link an existing
+        // account, i.e. a password guess. Cap those far harder than sign-ins.
+        if ($password !== null
+            && $helper->isThrottled('link:' . $ip, self::RL_LINK_MAX, self::RL_LINK_WINDOW)
+        ) {
+            $this->_jsonError('Too many attempts. Please wait a few minutes and try again.', 429);
+            return;
+        }
 
         try {
             $result = Mage::helper('sociallogin')->authenticate($provider, $token, $password);
@@ -89,6 +114,12 @@ class MageAustralia_SocialLogin_AuthController extends Mage_Core_Controller_Fron
     private function _resolveRedirect(): string
     {
         $redirect = (string) $this->getRequest()->getPost('redirect');
+
+        // Strip control characters (CR, LF, TAB, NUL...) BEFORE the checks.
+        // A browser drops them when parsing a URL, so "/\n//evil.com" passes a
+        // naive "starts with / and not //" test and then navigates offsite.
+        $redirect = preg_replace('/[\x00-\x1F\x7F]/', '', $redirect) ?? '';
+
         if ($redirect !== ''
             && $redirect[0] === '/'
             && substr($redirect, 0, 2) !== '//'
@@ -127,15 +158,21 @@ class MageAustralia_SocialLogin_AuthController extends Mage_Core_Controller_Fron
         }
 
         try {
-            // Validate the JWT using the same secret derivation as JwtService::getSecret()
-            $secret = Mage::getStoreConfig('maho_apiplatform/oauth2/secret');
-            if (empty($secret)) {
-                $secret = Mage::getStoreConfig('maho_api/settings/jwt_secret');
+            // Ask JwtService for the secret rather than re-deriving it. The
+            // hand-rolled derivation this replaced could never match a real
+            // token: it read 'maho_apiplatform/oauth2/secret' and
+            // 'maho_api/settings/jwt_secret', neither of which exists (the
+            // real path is 'apiplatform/oauth2/secret'), then fell back to a
+            // crypt-key hash that JwtService explicitly refuses to use --
+            // deriving from the encryption key would turn local.xml exposure
+            // into a JWT-forgery primitive. So this action rejected every
+            // token it was ever given.
+            // This action only exists to bridge a headless storefront, so the
+            // API module is a hard dependency of it (and of nothing else here).
+            if (!class_exists(\Maho\ApiPlatform\Service\JwtService::class)) {
+                throw new Exception('ApiPlatform is not installed; the JWT callback is unavailable.');
             }
-            if (empty($secret)) {
-                $cryptKey = (string) Mage::getConfig()->getNode('global/crypt/key');
-                $secret = hash('sha256', $cryptKey . ':maho_api_jwt');
-            }
+            $secret = \Maho\ApiPlatform\Service\JwtService::resolveSecret();
 
             $payload = \Firebase\JWT\JWT::decode(
                 $token,

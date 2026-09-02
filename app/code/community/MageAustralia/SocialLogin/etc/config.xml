@@ -116,4 +116,18 @@
             </sociallogin>
         </customer>
     </default>
+    <crontab>
+        <jobs>
+            <!-- Codes are single-use and expire in minutes; nothing purged them,
+                 so the table grew forever and expired hashes sat on disk. -->
+            <sociallogin_otp_cleanup>
+                <schedule>
+                    <cron_expr>17 3 * * *</cron_expr>
+                </schedule>
+                <run>
+                    <model>sociallogin/cron_otpCleanup::run</model>
+                </run>
+            </sociallogin_otp_cleanup>
+        </jobs>
+    </crontab>
 </config>
