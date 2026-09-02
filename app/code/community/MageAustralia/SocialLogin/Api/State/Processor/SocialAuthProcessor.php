@@ -87,7 +87,6 @@ class SocialAuthProcessor implements ProcessorInterface
 
     private function mergeGuestCart(string $maskedId, \Mage_Customer_Model_Customer $customer): array
     {
-        /** @var \Mage_Sales_Model_Quote $guestCart */
         $guestCart = \Mage::getModel('sales/quote')->load($maskedId, 'masked_quote_id');
         if (!$guestCart->getId() || !$guestCart->getIsActive() || !$guestCart->getItemsCount()) {
             return ['maskedId' => null, 'qty' => 0];
@@ -101,7 +100,6 @@ class SocialAuthProcessor implements ProcessorInterface
             return ['maskedId' => null, 'qty' => 0];
         }
 
-        /** @var \Mage_Sales_Model_Quote $customerCart */
         $customerCart = \Mage::getModel('sales/quote');
         $customerCart->setStore(\Mage::app()->getStore());
         $customerCart->loadByCustomer($customer);
@@ -143,7 +141,6 @@ class SocialAuthProcessor implements ProcessorInterface
 
     private function getCustomerCart(\Mage_Customer_Model_Customer $customer): ?\Mage_Sales_Model_Quote
     {
-        /** @var \Mage_Sales_Model_Quote $quote */
         $quote = \Mage::getModel('sales/quote');
         $quote->setStore(\Mage::app()->getStore());
         $quote->loadByCustomer($customer);
