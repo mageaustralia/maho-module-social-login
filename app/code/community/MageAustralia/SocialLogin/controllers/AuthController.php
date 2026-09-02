@@ -181,8 +181,30 @@ class MageAustralia_SocialLogin_AuthController extends Mage_Core_Controller_Fron
 
             $payload = (array) $payload;
 
+            // JWT::decode verifies the signature and the time claims, and
+            // nothing else. JwtService signs THREE kinds of token with this one
+            // secret and one audience -- customer, admin and api_user, told
+            // apart only by the `type` claim -- so accepting any validly signed
+            // token here would let a non-customer token open a customer session
+            // the moment one of them ever carried a customer_id.
+            // lcobucci's permittedFor() encodes `aud` as an ARRAY, and the RFC
+            // permits either form, so accept both rather than assume.
+            $aud = $payload['aud'] ?? null;
+            $audValues = is_array($aud) ? $aud : (is_object($aud) ? (array) $aud : [$aud]);
+            if (!in_array('maho-api', array_map('strval', $audValues), true)) {
+                throw new \Exception('Token audience mismatch');
+            }
+            if (($payload['type'] ?? null) !== 'customer') {
+                throw new \Exception('Token is not a customer token');
+            }
+
             if (empty($payload['customer_id'])) {
                 throw new \Exception('No customer_id in token');
+            }
+
+            // sub is 'customer_<id>'; it must agree with the customer_id claim.
+            if (($payload['sub'] ?? null) !== 'customer_' . (int) $payload['customer_id']) {
+                throw new \Exception('Token subject does not match customer_id');
             }
 
             $customerId = (int) $payload['customer_id'];

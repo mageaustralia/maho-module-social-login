@@ -52,7 +52,17 @@ class MageAustralia_SocialLogin_Model_Provider_Apple implements MageAustralia_So
         $email = $payload['email'] ?? null;
         $emailVerified = $payload['email_verified'] ?? false;
         if (is_string($emailVerified)) {
+            // Apple sends this as the STRING "true"/"false", not a boolean.
             $emailVerified = $emailVerified === 'true';
+        }
+
+        // Apple always sends the claim, so a false here is the provider stating
+        // the address is NOT verified -- not merely declining to say. Refuse it,
+        // as the Google provider already does. (Facebook exposes no equivalent
+        // claim at all; absence is handled by never auto-linking, not by
+        // rejecting the sign-in.)
+        if ($email && !$emailVerified) {
+            throw new \InvalidArgumentException('Apple reports this email address as unverified');
         }
 
         return [
