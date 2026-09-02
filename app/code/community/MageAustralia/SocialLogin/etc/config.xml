@@ -63,6 +63,17 @@
                 </sociallogin>
             </updates>
         </layout>
+        <!-- Without this the locale CSV is never loaded and every __() string
+             falls through untranslated. -->
+        <translate>
+            <modules>
+                <MageAustralia_SocialLogin>
+                    <files>
+                        <default>MageAustralia_SocialLogin.csv</default>
+                    </files>
+                </MageAustralia_SocialLogin>
+            </modules>
+        </translate>
     </frontend>
     <admin>
         <routers>
@@ -76,6 +87,15 @@
         </routers>
     </admin>
     <adminhtml>
+        <translate>
+            <modules>
+                <MageAustralia_SocialLogin>
+                    <files>
+                        <default>MageAustralia_SocialLogin.csv</default>
+                    </files>
+                </MageAustralia_SocialLogin>
+            </modules>
+        </translate>
         <events>
             <adminhtml_widget_container_html_before>
                 <observers>

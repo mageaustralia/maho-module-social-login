@@ -142,11 +142,16 @@ class MageAustralia_SocialLogin_Helper_Data extends Mage_Core_Helper_Abstract
             $this->assertCustomerCanLogIn($customer);
 
             // Auto-link (admin opt-in): trust the provider's verified email and
-            // link + sign in without a password. Guarded on the provider's
-            // email_verified claim when it is present (Google/Apple set it);
-            // if absent, the cryptographically verified token is relied upon.
+            // link + sign in without a password.
+            //
+            // This REQUIRES a positive email_verified from the provider. It used
+            // to default to true when the claim was absent, which inverted the
+            // safe default: taking over an existing account without a password
+            // on the strength of an address the provider never confirmed. Google
+            // and Apple both set the claim; Facebook exposes no equivalent, so a
+            // Facebook sign-in never auto-links.
             $autoLink = $this->isAutoLinkExistingEnabled()
-                && ($claims['email_verified'] ?? true);
+                && !empty($claims['email_verified']);
             if (!$autoLink) {
                 if ($password === null || $password === '') {
                     return ['linkRequired' => true, 'email' => $this->maskEmail($email)];

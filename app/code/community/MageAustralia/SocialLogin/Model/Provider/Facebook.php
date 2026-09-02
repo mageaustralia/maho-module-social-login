@@ -68,9 +68,14 @@ class MageAustralia_SocialLogin_Model_Provider_Facebook implements MageAustralia
         }
 
         return [
-            'sub'            => (string) $profile['id'],
-            'email'          => strtolower((string) $profile['email']),
-            'email_verified' => true,
+            'sub'   => (string) $profile['id'],
+            'email' => strtolower((string) $profile['email']),
+            // Facebook's Graph API exposes no email-verification claim, so this
+            // cannot be asserted. It used to say true, which is a claim the
+            // provider never made -- and auto-link trusts this flag to sign a
+            // customer into an existing account with no password. Report false
+            // and let the caller decide.
+            'email_verified' => false,
             'name'           => $profile['name'] ?? null,
             'given_name'     => $profile['first_name'] ?? null,
             'family_name'    => $profile['last_name'] ?? null,
