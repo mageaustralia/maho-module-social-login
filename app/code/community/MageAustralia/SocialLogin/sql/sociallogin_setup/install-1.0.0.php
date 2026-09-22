@@ -64,7 +64,7 @@ if (!$connection->isTableExists($tableName)) {
         )
         ->addColumn(
             'created_at',
-            Maho\Db\Ddl\Table::TYPE_TIMESTAMP,
+            Maho\Db\Ddl\Table::TYPE_DATETIME,
             null,
             [
                 'nullable' => false,
