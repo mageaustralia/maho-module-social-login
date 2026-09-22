@@ -25,7 +25,10 @@ class MageAustralia_SocialLogin_Adminhtml_Sociallogin_CustomerController extends
     #[\Override]
     public function preDispatch(): static
     {
-        $this->_setForcedFormKeyActions(['promoteMobile']);
+        // Removed in Maho 26.9, where core key-checks every admin request itself
+        if (method_exists($this, '_setForcedFormKeyActions')) {
+            $this->_setForcedFormKeyActions(['promoteMobile']);
+        }
         parent::preDispatch();
         return $this;
     }
