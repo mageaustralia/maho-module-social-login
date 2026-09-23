@@ -30,7 +30,7 @@ if (!$connection->isTableExists($table)) {
 }
 
 /** @var Mage_Customer_Model_Resource_Setup $customerSetup */
-$customerSetup = Mage::getResourceModel('customer/setup', ['core_setup']);
+$customerSetup = new Mage_Customer_Model_Resource_Setup('core_setup');
 if (!$customerSetup->getAttribute('customer', 'mobile')) {
     $customerSetup->addAttribute('customer', 'mobile', [
         'type' => 'varchar', 'label' => 'Mobile', 'input' => 'text',
