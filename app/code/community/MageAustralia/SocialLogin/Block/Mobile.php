@@ -6,7 +6,7 @@ class MageAustralia_SocialLogin_Block_Mobile extends Mage_Core_Block_Template
 {
     public function isEnabled(): bool
     {
-        $helper = Mage::helper('sociallogin');
+        $helper = Mage::helper('smslogin');
         return Mage::getSingleton('customer/session')->isLoggedIn()
             && $helper->isOtpEnabled() && $helper->isOtpSmsEnabled();
     }

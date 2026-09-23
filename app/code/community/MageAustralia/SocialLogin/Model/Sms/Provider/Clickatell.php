@@ -7,7 +7,7 @@ class MageAustralia_SocialLogin_Model_Sms_Provider_Clickatell implements MageAus
     #[\Override]
     public function send(string $to, string $message, ?int $storeId = null): bool
     {
-        $helper = Mage::helper('sociallogin');
+        $helper = Mage::helper('smslogin');
         $apiKey = $helper->getClickatellApiKey($storeId);
         $sender = $helper->getClickatellSender($storeId);
         if ($apiKey === '') {

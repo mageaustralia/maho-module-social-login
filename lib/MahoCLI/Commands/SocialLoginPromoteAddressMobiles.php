@@ -50,7 +50,7 @@ class SocialLoginPromoteAddressMobiles extends Command
 
         $dryRun = (bool) $input->getOption('dry-run');
         $limit  = max(0, (int) $input->getOption('limit'));
-        $helper = Mage::helper('sociallogin');
+        $helper = Mage::helper('smslogin');
 
         $output->writeln('<info>sociallogin:promote-address-mobiles</info>');
         $output->writeln('default country = ' . $helper->getDefaultMobileCountry());

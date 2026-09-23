@@ -7,10 +7,10 @@ class MageAustralia_SocialLogin_Model_Otp_Channel_Sms implements MageAustralia_S
     #[\Override]
     public function send(string $to, string $code, string $purpose, ?int $storeId = null): bool
     {
-        if (!Mage::helper('sociallogin')->isOtpSmsEnabled($storeId)) {
+        if (!Mage::helper('smslogin')->isOtpSmsEnabled($storeId)) {
             return false;
         }
         $message = 'Your verification code is: ' . $code;
-        return Mage::helper('sociallogin/sms')->send($to, $message, $storeId);
+        return Mage::helper('smslogin/sms')->send($to, $message, $storeId);
     }
 }

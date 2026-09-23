@@ -18,42 +18,34 @@ use Maho\Config\Route;
  *                    customer record. Surfaced as a button on the customer
  *                    edit page via Observer::addPromoteMobileButton().
  */
-class MageAustralia_SocialLogin_Adminhtml_Sociallogin_CustomerController extends Mage_Adminhtml_Controller_Action
+class MageAustralia_SocialLogin_Adminhtml_Smslogin_CustomerController extends Mage_Adminhtml_Controller_Action
 {
     public const ADMIN_RESOURCE = 'customer/sociallogin_promote_mobile';
 
-    #[\Override]
-    public function preDispatch(): static
-    {
-        $this->_setForcedFormKeyActions(['promoteMobile']);
-        parent::preDispatch();
-        return $this;
-    }
-
-    #[Route('/admin/sociallogin_customer/promoteMobile', methods: ['GET', 'POST'])]
+    #[Route('/admin/smslogin_customer/promoteMobile', methods: ['GET', 'POST'])]
     public function promoteMobileAction(): void
     {
         $customerId = (int) $this->getRequest()->getParam('id');
         $session    = Mage::getSingleton('adminhtml/session');
 
         if ($customerId <= 0) {
-            $session->addError(Mage::helper('sociallogin')->__('Missing customer id.'));
+            $session->addError(Mage::helper('smslogin')->__('Missing customer id.'));
             $this->_redirect('*/customer/index');
             return;
         }
 
         try {
-            $mobile = Mage::helper('sociallogin')->promoteAddressMobileToCustomer($customerId);
+            $mobile = Mage::helper('smslogin')->promoteAddressMobileToCustomer($customerId);
             if ($mobile === null) {
-                $session->addNotice(Mage::helper('sociallogin')->__(
+                $session->addNotice(Mage::helper('smslogin')->__(
                     'No valid mobile (per the configured default country) was found on this customer\'s addresses.',
                 ));
             } else {
-                $session->addSuccess(Mage::helper('sociallogin')->__('Pre-approved mobile: %s', $mobile));
+                $session->addSuccess(Mage::helper('smslogin')->__('Pre-approved mobile: %s', $mobile));
             }
         } catch (\Throwable $e) {
             Mage::logException($e);
-            $session->addError(Mage::helper('sociallogin')->__('Promote failed: %s', $e->getMessage()));
+            $session->addError(Mage::helper('smslogin')->__('Promote failed: %s', $e->getMessage()));
         }
 
         $this->_redirect('*/customer/edit', ['id' => $customerId]);

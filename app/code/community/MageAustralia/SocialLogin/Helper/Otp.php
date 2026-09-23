@@ -14,7 +14,7 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
     public function requestCode(string $identifier, string $purpose, string $channel, ?int $storeId = null, ?string $ip = null): array
     {
         $identifier = $this->_normaliseIdentifier($identifier);
-        $helper = Mage::helper('sociallogin');
+        $helper = Mage::helper('smslogin');
         if (!in_array($purpose, self::PURPOSES, true)) {
             return ['ok' => false, 'throttled' => false, 'channel' => $channel];
         }
@@ -35,7 +35,7 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
             ->format('Y-m-d H:i:s');
 
         $this->_consumeOpenCodes($identifier, $purpose);
-        Mage::getModel('sociallogin/otp')
+        Mage::getModel('smslogin/otp')
             ->setIdentifier($identifier)->setPurpose($purpose)->setChannel('sms')
             ->setCodeHash($this->_hash($code, $storeId))->setAttempts(0)
             ->setExpiresAt($expires)->setConsumedAt(null)->setRequestIp($ip)->setCreatedAt($now)
@@ -59,10 +59,10 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
     public function verifyCode(string $identifier, string $purpose, string $code, ?int $storeId = null): array
     {
         $identifier = $this->_normaliseIdentifier($identifier);
-        $helper = Mage::helper('sociallogin');
+        $helper = Mage::helper('smslogin');
         $now = Mage_Core_Model_Locale::nowUtc();
         /** @var MageAustralia_SocialLogin_Model_Otp $row */
-        $row = Mage::getModel('sociallogin/otp')->getCollection()
+        $row = Mage::getModel('smslogin/otp')->getCollection()
             ->addFieldToFilter('identifier', $identifier)
             ->addFieldToFilter('purpose', $purpose)
             ->addFieldToFilter('consumed_at', ['null' => true])
@@ -100,7 +100,7 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
 
     protected function _normaliseIdentifier(string $identifier): string
     {
-        $helper = Mage::helper('sociallogin');
+        $helper = Mage::helper('smslogin');
         return strpos($identifier, '@') !== false
             ? $helper->normaliseEmail($identifier)
             : $helper->normaliseMobile($identifier);
@@ -149,7 +149,7 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
         // Fallback: look for a valid AU mobile (or whatever default-country is set
         // to) on the customer's addresses. Read-only — does NOT persist to the
         // customer record. Bulk promotion happens via the CLI sweep or admin button.
-        return Mage::helper('sociallogin')->findValidMobileFromAddresses($customer);
+        return Mage::helper('smslogin')->findValidMobileFromAddresses($customer);
     }
 
     /**
@@ -159,13 +159,13 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
      */
     protected function _isInCooldown(string $identifier, string $purpose, ?int $storeId): bool
     {
-        $cooldown = Mage::helper('sociallogin')->getOtpResendCooldown($storeId);
+        $cooldown = Mage::helper('smslogin')->getOtpResendCooldown($storeId);
         if ($cooldown <= 0) {
             return false;
         }
         $since = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
             ->sub(new DateInterval('PT' . $cooldown . 'S'))->format('Y-m-d H:i:s');
-        $recent = Mage::getModel('sociallogin/otp')->getCollection()
+        $recent = Mage::getModel('smslogin/otp')->getCollection()
             ->addFieldToFilter('identifier', $identifier)
             ->addFieldToFilter('purpose', $purpose)
             ->addFieldToFilter('created_at', ['gteq' => $since])->getSize();
@@ -180,14 +180,14 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
         $ipWindow = (int) Mage::getStoreConfig('customer/sociallogin/otp_rl_ip_window');
         $since = static fn(int $secs): string => (new DateTimeImmutable('now', new DateTimeZone('UTC')))->sub(new DateInterval('PT' . $secs . 'S'))->format('Y-m-d H:i:s');
 
-        $byId = Mage::getModel('sociallogin/otp')->getCollection()
+        $byId = Mage::getModel('smslogin/otp')->getCollection()
             ->addFieldToFilter('identifier', $identifier)
             ->addFieldToFilter('created_at', ['gteq' => $since($idWindow)])->getSize();
         if ($byId >= $idCount) {
             return true;
         }
         if ($ip !== null && $ip !== '') {
-            $byIp = Mage::getModel('sociallogin/otp')->getCollection()
+            $byIp = Mage::getModel('smslogin/otp')->getCollection()
                 ->addFieldToFilter('request_ip', $ip)
                 ->addFieldToFilter('created_at', ['gteq' => $since($ipWindow)])->getSize();
             if ($byIp >= $ipCount) {
@@ -205,6 +205,6 @@ class MageAustralia_SocialLogin_Helper_Otp extends Mage_Core_Helper_Abstract
 
     protected function _hash(string $code, ?int $storeId): string
     {
-        return hash('sha256', $code . '|' . Mage::helper('sociallogin')->getOtpPepper($storeId));
+        return hash('sha256', $code . '|' . Mage::helper('smslogin')->getOtpPepper($storeId));
     }
 }

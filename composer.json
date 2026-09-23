@@ -2,12 +2,18 @@
     "name": "mageaustralia/maho-module-social-login",
     "license": "OSL-3.0",
     "type": "maho-module",
-    "description": "Social login for Maho — Google, Apple, and Facebook. Works with both default Maho frontend and Maho Storefront (headless).",
-    "keywords": ["maho", "social-login", "google", "apple", "facebook", "oauth"],
+    "description": "SMS one-time-code login and mobile verification for Maho. Social sign-in (Google, Apple, Facebook) is in Maho core from 26.9.",
+    "keywords": [
+        "maho",
+        "sms",
+        "otp",
+        "passwordless",
+        "login",
+        "mobile-verification"
+    ],
     "require": {
         "php": ">=8.3",
-        "mahocommerce/maho": "^26.5",
-        "firebase/php-jwt": "^6.0"
+        "mahocommerce/maho": ">=26.9 <26.11"
     },
     "authors": [
         {

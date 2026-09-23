@@ -16,11 +16,11 @@ class MageAustralia_SocialLogin_Helper_Sms extends Mage_Core_Helper_Abstract
 
     public function getProvider(?int $storeId = null): ?MageAustralia_SocialLogin_Model_Sms_ProviderInterface
     {
-        $code = Mage::helper('sociallogin')->getSmsProvider($storeId);
+        $code = Mage::helper('smslogin')->getSmsProvider($storeId);
         if ($code === '') {
             return null;
         }
-        $model = Mage::getModel('sociallogin/sms_provider_' . $code);
+        $model = Mage::getModel('smslogin/sms_provider_' . $code);
         return $model instanceof MageAustralia_SocialLogin_Model_Sms_ProviderInterface ? $model : null;
     }
 }

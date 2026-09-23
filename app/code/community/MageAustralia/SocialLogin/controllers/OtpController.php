@@ -29,7 +29,7 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
             return;
         }
 
-        $helper = Mage::helper('sociallogin');
+        $helper = Mage::helper('smslogin');
         $purpose = (string) $this->getRequest()->getPost('purpose', 'login');
         if ($purpose === 'add_mobile') {
             if (!Mage::getSingleton('customer/session')->isLoggedIn()) {
@@ -47,7 +47,7 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
             $identifier = $helper->normaliseEmail((string) $this->getRequest()->getPost('email'));
         }
 
-        Mage::helper('sociallogin/otp')->requestCode($identifier, $purpose, 'sms', $this->_storeId(), $this->_ip());
+        Mage::helper('smslogin/otp')->requestCode($identifier, $purpose, 'sms', $this->_storeId(), $this->_ip());
 
         // Enumeration-safe: identical body whatever the outcome (sent, not-sent,
         // throttled, cooldown). Do not leak account existence or throttling state.
@@ -70,10 +70,10 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
             return;
         }
 
-        $email = Mage::helper('sociallogin')->normaliseEmail((string) $this->getRequest()->getPost('email', ''));
+        $email = Mage::helper('smslogin')->normaliseEmail((string) $this->getRequest()->getPost('email', ''));
         $code  = (string) $this->getRequest()->getPost('code', '');
 
-        $res = Mage::helper('sociallogin/otp')->verifyCode($email, 'login', $code, $this->_storeId());
+        $res = Mage::helper('smslogin/otp')->verifyCode($email, 'login', $code, $this->_storeId());
         if (empty($res['ok'])) {
             $this->_json(['ok' => false, 'message' => 'Invalid or expired code.']);
             return;
@@ -91,7 +91,7 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
         // A valid code is not on its own an entitlement to a session: apply the
         // same confirmation / active gates a password login would hit.
         try {
-            Mage::helper('sociallogin')->assertCustomerCanLogIn($customer);
+            Mage::helper('smslogin')->assertCustomerCanLogIn($customer);
         } catch (Mage_Core_Exception $e) {
             $this->_json(['ok' => false, 'message' => $e->getMessage()]);
             return;
@@ -146,7 +146,7 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
             return;
         }
 
-        $helper = Mage::helper('sociallogin');
+        $helper = Mage::helper('smslogin');
         $mobile = $helper->normaliseMobile((string) $this->getRequest()->getPost('mobile', ''));
         $code   = (string) $this->getRequest()->getPost('code', '');
 
@@ -155,7 +155,7 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
             return;
         }
 
-        $res = Mage::helper('sociallogin/otp')->verifyCode($mobile, 'add_mobile', $code, $this->_storeId());
+        $res = Mage::helper('smslogin/otp')->verifyCode($mobile, 'add_mobile', $code, $this->_storeId());
         if (empty($res['ok'])) {
             $this->_json(['ok' => false, 'message' => 'Invalid or expired code.']);
             return;
@@ -188,7 +188,7 @@ class MageAustralia_SocialLogin_OtpController extends Mage_Core_Controller_Front
         if (!$this->getRequest()->isPost()) {
             return [['error' => 'Invalid request.'], 405];
         }
-        if (!Mage::helper('sociallogin')->isOtpEnabled($this->_storeId())) {
+        if (!Mage::helper('smslogin')->isOtpEnabled($this->_storeId())) {
             return [['error' => 'Not available.'], 404];
         }
         if (!$this->_formKeyOk()) {

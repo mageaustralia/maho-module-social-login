@@ -6,8 +6,8 @@
                 <children>
                     <customer>
                         <children>
-                            <sociallogin_promote_mobile translate="title" module="sociallogin">
-                                <title>Pre-approve mobile from address (Social Login)</title>
+                            <sociallogin_promote_mobile translate="title" module="smslogin">
+                                <title>Pre-approve mobile from address (SMS Login)</title>
                                 <sort_order>200</sort_order>
                             </sociallogin_promote_mobile>
                         </children>
@@ -16,8 +16,8 @@
                         <children>
                             <config>
                                 <children>
-                                    <sociallogin translate="title" module="sociallogin">
-                                        <title>Social Login</title>
+                                    <sociallogin translate="title" module="smslogin">
+                                        <title>SMS Login</title>
                                     </sociallogin>
                                 </children>
                             </config>

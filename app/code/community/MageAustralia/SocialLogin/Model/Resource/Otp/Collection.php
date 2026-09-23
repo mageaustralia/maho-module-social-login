@@ -7,6 +7,6 @@ class MageAustralia_SocialLogin_Model_Resource_Otp_Collection extends Mage_Core_
     #[\Override]
     protected function _construct(): void
     {
-        $this->_init('sociallogin/otp');
+        $this->_init('smslogin/otp');
     }
 }

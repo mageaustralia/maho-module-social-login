@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<layout>
+    <!-- Account dashboard: add/verify mobile number for SMS sign-in -->
+    <customer_account_index>
+        <reference name="content">
+            <block type="smslogin/mobile" name="sociallogin.mobile" template="sociallogin/mobile/manage.phtml" />
+        </reference>
+    </customer_account_index>
+</layout>

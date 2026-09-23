@@ -6,6 +6,7 @@
             <codePool>community</codePool>
             <depends>
                 <Mage_Customer/>
+                <Maho_SocialLogin/>
             </depends>
         </MageAustralia_SocialLogin>
     </modules>
