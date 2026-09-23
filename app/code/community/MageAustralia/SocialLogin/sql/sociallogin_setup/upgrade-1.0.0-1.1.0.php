@@ -29,20 +29,4 @@ if (!$connection->isTableExists($table)) {
     $connection->createTable($t);
 }
 
-/** @var Mage_Customer_Model_Resource_Setup $customerSetup */
-$customerSetup = Mage::getResourceModel('customer/setup', ['core_setup']);
-if (!$customerSetup->getAttribute('customer', 'mobile')) {
-    $customerSetup->addAttribute('customer', 'mobile', [
-        'type' => 'varchar', 'label' => 'Mobile', 'input' => 'text',
-        'required' => false, 'visible' => true, 'user_defined' => true,
-        'system' => false, 'position' => 100,
-    ]);
-}
-if (!$customerSetup->getAttribute('customer', 'mobile_verified')) {
-    $customerSetup->addAttribute('customer', 'mobile_verified', [
-        'type' => 'datetime', 'label' => 'Mobile Verified At', 'input' => 'date',
-        'required' => false, 'visible' => false, 'user_defined' => true, 'system' => false,
-    ]);
-}
-
 $installer->endSetup();
