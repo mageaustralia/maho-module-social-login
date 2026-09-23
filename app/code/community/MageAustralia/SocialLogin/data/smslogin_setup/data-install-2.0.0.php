@@ -7,6 +7,27 @@
 
 declare(strict_types=1);
 
+/** @var Mage_Core_Model_Resource_Setup $this */
+$installer = $this;
+$connection = $installer->getConnection();
+
+// Customer attributes live here rather than in sql/: on a fresh install the
+// customer entity type is itself created by a data script, after every sql one
+$customerSetup = new Mage_Customer_Model_Resource_Setup('core_setup');
+if (!$customerSetup->getAttribute('customer', 'mobile')) {
+    $customerSetup->addAttribute('customer', 'mobile', [
+        'type' => 'varchar', 'label' => 'Mobile', 'input' => 'text',
+        'required' => false, 'visible' => true, 'user_defined' => true,
+        'system' => false, 'position' => 100,
+    ]);
+}
+if (!$customerSetup->getAttribute('customer', 'mobile_verified')) {
+    $customerSetup->addAttribute('customer', 'mobile_verified', [
+        'type' => 'datetime', 'label' => 'Mobile Verified At', 'input' => 'date',
+        'required' => false, 'visible' => false, 'user_defined' => true, 'system' => false,
+    ]);
+}
+
 /**
  * Social sign-in moved to Maho core (Maho_SocialLogin, 26.9+). Copy the linked
  * identities from this module's 1.x table into core's so existing customers
@@ -16,10 +37,6 @@ declare(strict_types=1);
  * customer data belongs to a deliberate cleanup, not an upgrade. Re-running
  * is safe, rows core already has are skipped.
  */
-
-/** @var Mage_Core_Model_Resource_Setup $this */
-$installer = $this;
-$connection = $installer->getConnection();
 
 $oldTable = $installer->getTable('mageaustralia_social_login');
 $newTable = $installer->getTable('social_login_identity');
